@@ -25,6 +25,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# coverage
+coverage/
+
 # debug
 npm-debug.*
 yarn-debug.*
@@ -46,3 +49,5 @@ yarn-error.*
 
 # gradle
 *.gradle
+coverage/clover.xml
+coverage/clover.xml
