@@ -101,11 +101,20 @@ export interface AnchorGeometry {
   z?: number;
 }
 
+export interface AlgorithmDiagnostics {
+  executionTimeMs: number;
+  evaluations: number;
+  initialError: number;
+  finalError: number;
+  finalTemperature?: number;
+}
+
 export interface PositionEstimate {
   x: number;
   y: number;
   errorRmse: number;
   iterations: number;
+  diagnostics?: AlgorithmDiagnostics;
 }
 
 /**
