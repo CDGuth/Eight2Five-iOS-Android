@@ -1,4 +1,7 @@
-import { DEFAULT_MFASA_OPTIONS, DEFAULT_TX_POWER_DBM } from "../LocalizationConfig";
+import {
+  DEFAULT_MFASA_OPTIONS,
+  DEFAULT_TX_POWER_DBM,
+} from "../LocalizationConfig";
 import type {
   AnchorGeometry,
   LocalizationOptimizer,

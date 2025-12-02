@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   TextInput,
   TouchableOpacity,
   PanResponder,
@@ -30,8 +29,6 @@ import {
 } from "../localization/types";
 
 const ACCENT_COLOR = "#3C6EC8";
-const ACCENT_DARK = "#3264BE";
-const ACCENT_BG = "rgba(60, 110, 200, 0.1)";
 
 const InputRow = ({
   label,
