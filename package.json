@@ -11,8 +11,8 @@
     "test": "jest --watchAll=false"
   },
   "dependencies": {
-    "expo": "~54.0.25",
-    "expo-dev-client": "~6.0.18",
+    "expo": "~54.0.26",
+    "expo-dev-client": "~6.0.19",
     "expo-status-bar": "~3.0.8",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -23,16 +23,16 @@
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
     "@types/react-test-renderer": "^19.1.0",
-    "expo-module-scripts": "^5.0.7",
     "eslint": "^9.0.0",
-    "typescript": "^5.9.3",
     "eslint-config-expo": "~10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
+    "expo-module-scripts": "^3.5.4",
     "jest": "~29.7.0",
-    "jest-expo": "~54.0.13",
+    "jest-expo": "^51.0.4",
     "prettier": "^3.6.2",
-    "react-test-renderer": "19.1.0"
+    "react-test-renderer": "19.1.0",
+    "typescript": "^5.9.3"
   },
   "jest": {
     "preset": "jest-expo",
