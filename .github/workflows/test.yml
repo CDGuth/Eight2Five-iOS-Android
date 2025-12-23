@@ -6,6 +6,7 @@ on:
       - "**.md"
       - "LICENSE"
       - "docs/**"
+  workflow_dispatch:
 
 env:
   NODE_OPTIONS: --openssl-legacy-provider
