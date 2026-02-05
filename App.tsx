@@ -1,7 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import OptimizationTestScreen from "./src/screens/OptimizationTestScreen";
+import OptimizationTestScreen from "./src/screens/OptimizationTest";
 
 export default function App() {
   return (

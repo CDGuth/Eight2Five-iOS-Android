@@ -25,6 +25,8 @@ export const DEFAULT_SIMULATION_NOISE = {
   distanceSlope: 0.05,
 } as const;
 
+export const DEFAULT_ANCHOR_SIGMA = 0.0;
+
 export const DEFAULT_KALMAN_CONFIG = {
   processNoise: 0.01,
   measurementNoise: 4.0,

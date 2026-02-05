@@ -80,6 +80,14 @@ export interface RssiFilter {
   filterSample(rssi: number): number;
 }
 
+export interface WeightingConfig {
+  enabled: boolean;
+  model: "linear" | "inverse-rssi";
+  base?: number;
+  scale?: number;
+  param?: number;
+}
+
 /**
  * Structure consumed by optimization layers.
  */
@@ -91,6 +99,8 @@ export interface OptimizationInput {
   bounds: SearchBounds;
   timeBudgetMs?: number;
   iterationTimeLimitMs?: number;
+  initialPopulation?: { x: number; y: number }[];
+  weighting?: WeightingConfig;
 }
 
 export interface AnchorGeometry {

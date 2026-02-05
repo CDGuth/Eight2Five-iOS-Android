@@ -168,7 +168,8 @@ export class MFASAOptimizer implements LocalizationOptimizer {
   ): Firefly[] {
     const fireflies: Firefly[] = [];
     for (let i = 0; i < size; i += 1) {
-      const position = this.randomPoint(opts.bounds);
+      const position =
+        opts.initialPopulation?.[i] || this.randomPoint(opts.bounds);
       const error = this.evaluate(position, opts, anchorMap, metrics);
       fireflies.push({ position, error, intensity: -error });
     }
@@ -319,12 +320,13 @@ export class MFASAOptimizer implements LocalizationOptimizer {
     if (metrics) {
       metrics.evaluations += 1;
     }
-    const { candidate, propagation, constants } = opts;
+    const { candidate, propagation, constants, weighting } = opts;
     if (!candidate.length || !anchorMap.size) {
       return Number.POSITIVE_INFINITY;
     }
 
-    let sumSq = 0;
+    let weightedSumSq = 0;
+    let sumWeights = 0;
     let used = 0;
 
     candidate.forEach((measurement) => {
@@ -343,15 +345,34 @@ export class MFASAOptimizer implements LocalizationOptimizer {
         constants,
       });
       const diff = measurement.filteredRssi - estimated;
-      sumSq += diff ** 2;
+
+      let weight = 1.0;
+      if (weighting?.enabled) {
+        // Use filtered RSSI magnitude as proxy for distance/quality
+        const rssi = measurement.filteredRssi;
+        const base = weighting.base ?? 120;
+        const scale = weighting.scale ?? 1.0;
+        const param = weighting.param ?? 1.0;
+
+        if (weighting.model === "linear") {
+          // Default: Math.max(1, 120 + rssi)
+          weight = Math.max(1, (base + rssi) * scale);
+        } else if (weighting.model === "inverse-rssi") {
+          // Default: 1.0 / |RSSI|
+          weight = scale / Math.pow(Math.abs(Math.min(-1, rssi)), param);
+        }
+      }
+
+      weightedSumSq += weight * diff ** 2;
+      sumWeights += weight;
       used += 1;
     });
 
-    if (!used) {
+    if (!used || sumWeights === 0) {
       return Number.POSITIVE_INFINITY;
     }
 
-    return Math.sqrt(sumSq / used);
+    return Math.sqrt(weightedSumSq / sumWeights);
   }
 
   private buildAnchorMap(anchors: AnchorGeometry[]) {
