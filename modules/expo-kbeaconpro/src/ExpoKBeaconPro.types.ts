@@ -2,7 +2,7 @@ export interface KBeacon {
   name: string;
   mac: string;
   rssi: number;
-  advPackets?: KBAdvPacketBase[];
+  advPackets: KBAdvPacketBase[];
 }
 
 export enum ExpoKBeaconProModuleEvents {
@@ -22,7 +22,7 @@ export interface ConnectionStateChangeEvent {
 export interface NotifyDataEvent {
   macAddress: string;
   eventType: number;
-  data: number[]; // Representing byte array
+  data: number[] | Record<string, unknown> | null;
 }
 
 // Advertisement Packet Types

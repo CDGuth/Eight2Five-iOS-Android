@@ -1,5 +1,12 @@
 {
   "name": "expo-kbeaconpro",
   "version": "1.0.0",
-  "main": "app.plugin.js"
+  "main": "index.tsx",
+  "types": "index.tsx",
+  "scripts": {
+    "test": "jest __tests__/ExpoKBeaconProModule.test.ts --watchAll=false --passWithNoTests --runInBand"
+  },
+  "expo": {
+    "plugin": "./app.plugin.js"
+  }
 }

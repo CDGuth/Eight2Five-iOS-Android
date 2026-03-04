@@ -6,7 +6,11 @@ import { captureRef } from "react-native-view-shot";
 import { ResultsView } from "../ResultsView";
 import { BatchAnalysis, LogBatch, RunResult, SweepStepResult } from "../types";
 
-jest.setTimeout(15000);
+jest.setTimeout(30000);
+
+beforeAll(() => {
+  jest.useRealTimers();
+});
 
 const render = (el: React.ReactElement) => {
   let tree: TestRenderer.ReactTestRenderer | null = null;

@@ -3,7 +3,7 @@ import {
   startScanning,
   stopScanning,
   addBeaconDiscoveredListener,
-} from "../../../../modules/expo-kbeaconpro/src/ExpoKBeaconProModule";
+} from "expo-kbeaconpro";
 import { BeaconState, RawBeaconData } from "../types/BeaconProtocol";
 import { parseBeaconData } from "../utils/beaconParser";
 import { LocalizationEngine } from "../localization/LocalizationEngine";
@@ -77,7 +77,9 @@ export function useBeaconScanner(options: UseBeaconScannerOptions = {}) {
         startScanning();
 
         subscription = addBeaconDiscoveredListener((event) => {
-          const discoveredBeacons = event.beacons;
+          const discoveredBeacons = Array.isArray(event.beacons)
+            ? event.beacons
+            : [];
           let hasUpdates = false;
 
           discoveredBeacons.forEach((rawBeacon: any) => {

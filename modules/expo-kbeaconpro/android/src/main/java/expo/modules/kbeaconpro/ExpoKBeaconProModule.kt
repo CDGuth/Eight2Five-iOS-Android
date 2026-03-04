@@ -43,6 +43,18 @@ import java.util.ArrayList
 class ExpoKBeaconProModule : Module() {
     private var beaconManager: KBeaconsMgr? = null
 
+    private fun normalizedMac(macAddress: String): String {
+        return macAddress.uppercase()
+    }
+
+    private fun normalizedPassword(password: String?): String {
+        if (password.isNullOrEmpty()) {
+            return "0000000000000000"
+        }
+
+        return password
+    }
+
     override fun definition() = ModuleDefinition {
         Name("ExpoKBeaconPro")
 
@@ -57,14 +69,21 @@ class ExpoKBeaconProModule : Module() {
                             "name" to beacon.name,
                             "mac" to beacon.mac,
                             "rssi" to beacon.rssi,
-                            "advPackets" to beacon.allAdvPackets()?.map { packet -> toMap(packet) }
+                            "advPackets" to (beacon.allAdvPackets()?.map { packet -> toMap(packet) } ?: emptyList())
                         )
-                    }
+                    } ?: emptyList()
                     sendEvent("onBeaconDiscovered", mapOf("beacons" to beaconData))
                 }
 
                 override fun onCentralBleStateChange(newState: Int) {}
             }
+        }
+
+        OnDestroy {
+            beaconManager?.stopScanning()
+            beaconManager?.clearBeacons()
+            beaconManager?.delegate = null
+            beaconManager = null
         }
 
         Function("startScanning") {
@@ -79,19 +98,31 @@ class ExpoKBeaconProModule : Module() {
             beaconManager?.clearBeacons()
         }
 
-        AsyncFunction("connect") { macAddress: String, password: String?, timeout: Int, promise: Promise ->
+        AsyncFunction("connect") { macAddress: String, password: String?, timeout: Int?, promise: Promise ->
             val beacon = findBeacon(macAddress)
             if (beacon != null) {
-                beacon.connect(password, timeout) { state, reason ->
+                val timeoutMs = timeout ?: 15000
+                var isSettled = false
+
+                fun settle(result: Boolean) {
+                    if (isSettled) {
+                        return
+                    }
+
+                    isSettled = true
+                    promise.resolve(result)
+                }
+
+                beacon.connect(normalizedPassword(password), timeoutMs) { state, reason ->
                     sendEvent("onConnectionStateChanged", mapOf(
                         "macAddress" to macAddress,
                         "state" to state,
                         "reason" to reason
                     ))
                     if (state == KBConnState.Connected) {
-                        promise.resolve(true)
+                        settle(true)
                     } else if (state == KBConnState.Disconnected) {
-                        promise.resolve(false)
+                        settle(false)
                     }
                 }
             } else {
@@ -99,26 +130,38 @@ class ExpoKBeaconProModule : Module() {
             }
         }
 
-        AsyncFunction("connectEnhanced") { macAddress: String, password: Promise, timeout: Int, connParaMap: Map<String, Any?>, promise: Promise ->
+        AsyncFunction("connectEnhanced") { macAddress: String, password: String?, timeout: Int?, connParaMap: Map<String, Any?>?, promise: Promise ->
             val beacon = findBeacon(macAddress)
             if (beacon != null) {
                 val connPara = KBConnPara().apply {
-                    connParaMap["syncUtcTime"]?.let { syncUtcTime = it as Boolean }
-                    connParaMap["readCommPara"]?.let { readCommPara = it as Boolean }
-                    connParaMap["readSlotPara"]?.let { readSlotPara = it as Boolean }
-                    connParaMap["readTriggerPara"]?.let { readTriggerPara = it as Boolean }
-                    connParaMap["readSensorPara"]?.let { readSensorPara = it as Boolean }
+                    (connParaMap?.get("syncUtcTime") as? Boolean)?.let { syncUtcTime = it }
+                    (connParaMap?.get("readCommPara") as? Boolean)?.let { readCommPara = it }
+                    (connParaMap?.get("readSlotPara") as? Boolean)?.let { readSlotPara = it }
+                    (connParaMap?.get("readTriggerPara") as? Boolean)?.let { readTriggerPara = it }
+                    (connParaMap?.get("readSensorPara") as? Boolean)?.let { readSensorPara = it }
                 }
-                beacon.connectEnhanced(password.toString(), timeout, connPara) { state, reason ->
+                val timeoutMs = timeout ?: 15000
+                var isSettled = false
+
+                fun settle(result: Boolean) {
+                    if (isSettled) {
+                        return
+                    }
+
+                    isSettled = true
+                    promise.resolve(result)
+                }
+
+                beacon.connectEnhanced(normalizedPassword(password), timeoutMs, connPara) { state, reason ->
                     sendEvent("onConnectionStateChanged", mapOf(
                         "macAddress" to macAddress,
                         "state" to state,
                         "reason" to reason
                     ))
                     if (state == KBConnState.Connected) {
-                        promise.resolve(true)
+                        settle(true)
                     } else if (state == KBConnState.Disconnected) {
-                        promise.resolve(false)
+                        settle(false)
                     }
                 }
             } else {
@@ -160,7 +203,7 @@ class ExpoKBeaconProModule : Module() {
                 } else {
                     promise.reject("READ_ERROR", exception?.description ?: "Unknown error", null)
                 }
-            } ?: promise.resolve(null)
+            } ?: promise.reject("BEACON_NOT_FOUND", "Beacon with MAC $macAddress not found", null)
         }
 
         AsyncFunction("readSensorHistory") { macAddress: String, sensorType: Int, maxNum: Int, readIndex: Int?, promise: Promise ->
@@ -176,7 +219,7 @@ class ExpoKBeaconProModule : Module() {
                 } else {
                     promise.reject("READ_ERROR", exception?.description ?: "Unknown error", null)
                 }
-            } ?: promise.resolve(null)
+            } ?: promise.reject("BEACON_NOT_FOUND", "Beacon with MAC $macAddress not found", null)
         }
 
         AsyncFunction("clearSensorHistory") { macAddress: String, sensorType: Int, promise: Promise ->
@@ -217,7 +260,8 @@ class ExpoKBeaconProModule : Module() {
     }
 
     private fun findBeacon(macAddress: String): KBeacon? {
-        return beaconManager?.beacons?.find { it.mac == macAddress }
+        val normalized = normalizedMac(macAddress)
+        return beaconManager?.beacons?.find { normalizedMac(it.mac) == normalized }
     }
 
     private fun toMap(packet: KBAdvPacketBase): Map<String, Any?> {
@@ -270,25 +314,25 @@ class ExpoKBeaconProModule : Module() {
         val advType = map["advType"] as? Int
         return when (advType) {
             0 -> KBCfgAdvIBeacon().apply {
-                map["uuid"]?.let { uuid = it as String }
-                map["majorID"]?.let { majorID = (it as Number).toInt() }
-                map["minorID"]?.let { minorID = (it as Number).toInt() }
+                (map["uuid"] as? String)?.let { uuid = it }
+                (map["majorID"] as? Number)?.let { majorID = it.toInt() }
+                (map["minorID"] as? Number)?.let { minorID = it.toInt() }
             }
             // Eddystone UID (AdvType 2)
             2 -> KBCfgAdvEddyUID().apply {
-                map["nid"]?.let { nid = it as String }
-                map["sid"]?.let { sid = it as String }
+                (map["nid"] as? String)?.let { nid = it }
+                (map["sid"] as? String)?.let { sid = it }
             }
             // Add other config types here
             else -> null
         }?.apply {
             if (this is com.kkmcn.kbeaconlib2.KBCfgPackage.KBCfgAdvBase) {
-                map["slotIndex"]?.let { slotIndex = (it as Number).toInt() }
-                map["txPower"]?.let { txPower = (it as Number).toInt() }
-                map["advPeriod"]?.let { advPeriod = (it as Number).toFloat() }
-                map["advMode"]?.let { advMode = (it as Number).toInt() }
-                map["advTriggerOnly"]?.let { advTriggerOnly = it as Boolean }
-                map["advConnectable"]?.let { advConnectable = it as Boolean }
+                (map["slotIndex"] as? Number)?.let { slotIndex = it.toInt() }
+                (map["txPower"] as? Number)?.let { txPower = it.toInt() }
+                (map["advPeriod"] as? Number)?.let { advPeriod = it.toFloat() }
+                (map["advMode"] as? Number)?.let { advMode = it.toInt() }
+                (map["advTriggerOnly"] as? Boolean)?.let { advTriggerOnly = it }
+                (map["advConnectable"] as? Boolean)?.let { advConnectable = it }
             }
         }
     }

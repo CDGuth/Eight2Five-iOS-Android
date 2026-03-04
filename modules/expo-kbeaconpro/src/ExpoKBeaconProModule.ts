@@ -27,8 +27,10 @@ type EventMap = {
   ) => void;
 };
 
+const nativeModule = requireNativeModule("ExpoKBeaconPro");
+
 const emitter = new EventEmitter<EventMap>(
-  requireNativeModule("ExpoKBeaconPro"),
+  nativeModule,
 );
 
 export function addBeaconDiscoveredListener(
@@ -59,15 +61,15 @@ export function addNotifyDataReceivedListener(
 }
 
 export function startScanning(): void {
-  return requireNativeModule("ExpoKBeaconPro").startScanning();
+  return nativeModule.startScanning();
 }
 
 export function stopScanning(): void {
-  return requireNativeModule("ExpoKBeaconPro").stopScanning();
+  return nativeModule.stopScanning();
 }
 
 export function clearBeacons(): void {
-  return requireNativeModule("ExpoKBeaconPro").clearBeacons();
+  return nativeModule.clearBeacons();
 }
 
 export async function connect(
@@ -75,11 +77,7 @@ export async function connect(
   password?: string,
   timeout?: number,
 ): Promise<boolean> {
-  return await requireNativeModule("ExpoKBeaconPro").connect(
-    macAddress,
-    password,
-    timeout,
-  );
+  return await nativeModule.connect(macAddress, password, timeout);
 }
 
 export async function connectEnhanced(
@@ -88,36 +86,25 @@ export async function connectEnhanced(
   timeout?: number,
   connPara?: KBConnPara,
 ): Promise<boolean> {
-  return await requireNativeModule("ExpoKBeaconPro").connectEnhanced(
-    macAddress,
-    password,
-    timeout,
-    connPara,
-  );
+  return await nativeModule.connectEnhanced(macAddress, password, timeout, connPara);
 }
 
 export async function disconnect(macAddress: string): Promise<boolean> {
-  return await requireNativeModule("ExpoKBeaconPro").disconnect(macAddress);
+  return await nativeModule.disconnect(macAddress);
 }
 
 export async function modifyConfig(
   macAddress: string,
   configs: KBCfgBase[],
 ): Promise<boolean> {
-  return await requireNativeModule("ExpoKBeaconPro").modifyConfig(
-    macAddress,
-    configs,
-  );
+  return await nativeModule.modifyConfig(macAddress, configs);
 }
 
 export async function readSensorDataInfo(
   macAddress: string,
   sensorType: KBSensorType,
 ): Promise<KBSensorDataInfo> {
-  return await requireNativeModule("ExpoKBeaconPro").readSensorDataInfo(
-    macAddress,
-    sensorType,
-  );
+  return await nativeModule.readSensorDataInfo(macAddress, sensorType);
 }
 
 export async function readSensorHistory(
@@ -126,7 +113,7 @@ export async function readSensorHistory(
   maxNum: number,
   readIndex?: number,
 ): Promise<KBSensorDataRecord[]> {
-  return await requireNativeModule("ExpoKBeaconPro").readSensorHistory(
+  return await nativeModule.readSensorHistory(
     macAddress,
     sensorType,
     maxNum,
@@ -138,27 +125,19 @@ export async function clearSensorHistory(
   macAddress: string,
   sensorType: KBSensorType,
 ): Promise<boolean> {
-  return await requireNativeModule("ExpoKBeaconPro").clearSensorHistory(
-    macAddress,
-    sensorType,
-  );
+  return await nativeModule.clearSensorHistory(macAddress, sensorType);
 }
 
 export async function subscribeSensorDataNotify(
   macAddress: string,
   sensorType: KBSensorType,
 ): Promise<boolean> {
-  return await requireNativeModule("ExpoKBeaconPro").subscribeSensorDataNotify(
-    macAddress,
-    sensorType,
-  );
+  return await nativeModule.subscribeSensorDataNotify(macAddress, sensorType);
 }
 
 export async function unsubscribeSensorDataNotify(
   macAddress: string,
   sensorType: KBSensorType,
 ): Promise<boolean> {
-  return await requireNativeModule(
-    "ExpoKBeaconPro",
-  ).unsubscribeSensorDataNotify(macAddress, sensorType);
+  return await nativeModule.unsubscribeSensorDataNotify(macAddress, sensorType);
 }

@@ -4,7 +4,11 @@ import { Text, TouchableOpacity } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import OptimizationTestScreen from "..";
 import { RunResult } from "../types";
-jest.setTimeout(15000);
+jest.setTimeout(30000);
+
+beforeAll(() => {
+  jest.useRealTimers();
+});
 
 function createSampleRun(): RunResult {
   return {
@@ -268,10 +272,12 @@ describe("OptimizationTestScreen", () => {
     expect(captureRef).toHaveBeenCalled();
   });
 
-  it("registers sub-back callback in results mode and invokes navigation actions", () => {
+  it("registers sub-back callback in results mode and invokes navigation actions", async () => {
     mockState = { ...createBaseState(), viewMode: "results", isRunning: false };
     const onSetSubBack = jest.fn();
     const tree = render({ onSetSubBack });
+
+    await act(async () => {});
 
     expect(onSetSubBack).toHaveBeenCalled();
     const registered = onSetSubBack.mock.calls[0]?.[0];

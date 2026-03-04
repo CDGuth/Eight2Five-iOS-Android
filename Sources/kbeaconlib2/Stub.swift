@@ -147,7 +147,17 @@ public final class KBSensorDataMsg {
 }
 
 public final class KBConnPara {
+  public var syncUtcTime = false
+  public var readCommPara = false
+  public var readSlotPara = false
+  public var readTriggerPara = false
+  public var readSensorPara = false
   public var timeout: Float
+
+  public init() {
+    self.timeout = 15.0
+  }
+
   public init(timeout: Float) {
     self.timeout = timeout
   }
@@ -177,6 +187,21 @@ public class KBeacon {
   public func connectionState() -> KBConnState { state }
 
   public func connect(para: KBConnPara, delegate: KBConnStateDelegate?) {
+    state = .Connected
+    delegate?.onConnStateChange(self, state: state, err: .Success)
+  }
+
+  public func connect(_ password: String, timeout: Float, delegate: KBConnStateDelegate?) {
+    _ = password
+    _ = timeout
+    state = .Connected
+    delegate?.onConnStateChange(self, state: state, err: .Success)
+  }
+
+  public func connectEnhanced(_ password: String, timeout: Float, connPara: KBConnPara, delegate: KBConnStateDelegate?) {
+    _ = password
+    _ = timeout
+    _ = connPara
     state = .Connected
     delegate?.onConnStateChange(self, state: state, err: .Success)
   }

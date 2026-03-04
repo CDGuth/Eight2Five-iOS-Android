@@ -3,6 +3,8 @@ import TestRenderer, { act } from "react-test-renderer";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
+const mountedRenderers = new Set<TestRenderer.ReactTestRenderer>();
+
 // Basic mocks for native/Expo helpers used in tests
 jest.mock("expo-clipboard", () => ({
   setImageAsync: jest.fn().mockResolvedValue(undefined),
@@ -65,5 +67,25 @@ const originalCreate = TestRenderer.create.bind(TestRenderer);
   act(() => {
     instance = originalCreate(...args);
   });
+  if (instance) {
+    mountedRenderers.add(instance);
+  }
   return instance as TestRenderer.ReactTestRenderer;
 };
+
+afterEach(() => {
+  mountedRenderers.forEach((renderer) => {
+    try {
+      act(() => {
+        renderer.unmount();
+      });
+    } catch {
+      // Ignore cleanup errors to avoid masking assertion failures
+    }
+  });
+
+  mountedRenderers.clear();
+  jest.clearAllTimers();
+  jest.useRealTimers();
+  jest.clearAllMocks();
+});

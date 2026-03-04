@@ -65,7 +65,7 @@ export function parseBeaconData(
     ? { ...existingState, lastSeen: Date.now(), rssi: raw.rssi }
     : { mac: raw.mac, lastSeen: Date.now(), rssi: raw.rssi };
 
-  for (const packet of raw.advPackets) {
+  for (const packet of raw.advPackets ?? []) {
     // Check for Eddystone-UID (advType usually 0 for UID in some libs, but check KBeacon types)
     // Based on ExpoKBeaconProModule.kt, KBAdvPacketEddyUID has nid and sid.
     if (packet.nid && packet.sid) {

@@ -3,19 +3,41 @@ import kbeaconlib2
 import CoreBluetooth
 
 public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDelegate, KBNotifyDataDelegate {
-    
-    var beaconManager: KBeaconsMgr?
-    var connectedBeacons = [String: KBeacon]()
+    private var beaconManager: KBeaconsMgr?
+    private var connectedBeacons = [String: KBeacon]()
+    private var pendingConnectionPromises = [String: Promise]()
+
+    private func normalizedMac(_ mac: String) -> String {
+        return mac.uppercased()
+    }
+
+    private func normalizedTimeoutSeconds(_ timeout: Int?) -> Float {
+        guard let timeout = timeout else { return 15.0 }
+        if timeout > 1000 {
+            return max(1.0, Float(timeout) / 1000.0)
+        }
+
+        return max(1.0, Float(timeout))
+    }
+
+    private func normalizedPassword(_ password: String?) -> String {
+        guard let password = password, !password.isEmpty else {
+            return "0000000000000000"
+        }
+
+        return password
+    }
 
     // Helper to convert KBeacon to Dictionary
     private func beaconToDict(_ beacon: KBeacon) -> [String: Any?] {
+        let advPacket = advPacketToDict(beacon.advPacket)
         let dict: [String: Any?] = [
             "mac": beacon.mac(),
             "name": beacon.name(),
             "rssi": beacon.rssi(),
             "isConnectable": beacon.isConnectable(),
             "connectionState": beacon.connectionState().rawValue,
-            "advPacket": advPacketToDict(beacon.advPacket)
+            "advPackets": advPacket.map { [$0] } ?? []
         ]
         return dict
     }
@@ -27,8 +49,8 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
         var dict: [String: Any?] = [
             "advType": advPacket.advType.rawValue,
             "uuid": advPacket.uuid,
-            "major": advPacket.majorID,
-            "minor": advPacket.minorID,
+            "majorID": advPacket.majorID,
+            "minorID": advPacket.minorID,
             "advPeriod": advPacket.advPeriod,
             "txPower": advPacket.txPower,
             "rssi": advPacket.rssi
@@ -38,7 +60,7 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             // No extra fields for iBeacon beyond base
         } else if let eddyUIDPacket = advPacket as? KBAdvPacketEddyUID {
             dict["nid"] = eddyUIDPacket.nid
-            dict["bid"] = eddyUIDPacket.bid
+            dict["sid"] = eddyUIDPacket.bid
         } else if let eddyURLPacket = advPacket as? KBAdvPacketEddyURL {
             dict["url"] = eddyURLPacket.url
         } else if let sensorPacket = advPacket as? KBAdvPacketSensor {
@@ -78,8 +100,12 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
         case "iBeacon":
             let cfg = KBCfgAdvIBeacon()
             if let uuid = dict["uuid"] as? String { cfg.uuid = uuid }
-            if let major = dict["major"] as? Int { cfg.majorID = NSNumber(value: major) }
-            if let minor = dict["minor"] as? Int { cfg.minorID = NSNumber(value: minor) }
+            if let major = dict["majorID"] as? Int ?? dict["major"] as? Int {
+                cfg.majorID = NSNumber(value: major)
+            }
+            if let minor = dict["minorID"] as? Int ?? dict["minor"] as? Int {
+                cfg.minorID = NSNumber(value: minor)
+            }
             return cfg
         case "trigger":
             let cfg = KBCfgTrigger()
@@ -110,36 +136,109 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
 
     // KBConnStateDelegate
     public func onConnStateChange(_ beacon: KBeacon, state: KBConnState, err: KBConnErr) {
+        let macAddress = beacon.mac()
+        let normalized = normalizedMac(macAddress)
+
         if state == .Connected {
-            connectedBeacons[beacon.mac()] = beacon
+            connectedBeacons[normalized] = beacon
             beacon.notifyDataDelegate = self
         } else if state == .Disconnected || state == .ConnectTimeout {
-            connectedBeacons.removeValue(forKey: beacon.mac())
+            connectedBeacons.removeValue(forKey: normalized)
         }
+
         sendEvent("onConnectionStateChanged", [
-            "mac": beacon.mac(),
+            "macAddress": macAddress,
             "state": state.rawValue,
-            "error": err.rawValue
+            "reason": err.rawValue
         ])
+
+        guard let promise = pendingConnectionPromises.removeValue(forKey: normalized) else {
+            return
+        }
+
+        if state == .Connected {
+            promise.resolve(true)
+        } else if state == .Disconnected || state == .ConnectTimeout {
+            promise.resolve(false)
+        }
     }
     
     // KBNotifyDataDelegate
     public func onNotifyData(_ beacon: KBeacon, type: KBNotifyDataType, data: Any) {
-        var eventData: [String: Any?] = [
-            "mac": beacon.mac(),
-            "type": type.rawValue,
-            "data": nil
-        ]
-        
-        if let sensorData = data as? KBSensorDataMsg {
-            eventData["data"] = [
+        let payload: Any
+
+        if let byteData = data as? Data {
+            payload = byteData.map { Int($0) }
+        } else if let byteArray = data as? [UInt8] {
+            payload = byteArray.map { Int($0) }
+        } else if let numberArray = data as? [NSNumber] {
+            payload = numberArray.map { $0.intValue }
+        } else if let sensorData = data as? KBSensorDataMsg {
+            payload = [
                 "utcTime": sensorData.utcTime,
                 "temperature": sensorData.temperature as Any,
                 "humidity": sensorData.humidity as Any
             ]
+        } else {
+            payload = NSNull()
         }
-        
+
+        let eventData: [String: Any] = [
+            "macAddress": beacon.mac(),
+            "eventType": type.rawValue,
+            "data": payload
+        ]
+
         sendEvent("onNotifyDataReceived", eventData)
+    }
+
+    private func connectInternal(
+        macAddress: String,
+        password: String?,
+        timeout: Int?,
+        connParaMap: [String: Any]?,
+        promise: Promise
+    ) {
+        guard let beacon = self.findBeacon(mac: macAddress) else {
+            promise.resolve(false)
+            return
+        }
+
+        let normalized = normalizedMac(macAddress)
+        pendingConnectionPromises.removeValue(forKey: normalized)?.resolve(false)
+        pendingConnectionPromises[normalized] = promise
+
+        let beaconPassword = normalizedPassword(password)
+        let timeoutSeconds = normalizedTimeoutSeconds(timeout)
+
+        if let connParaMap = connParaMap {
+            let connPara = KBConnPara()
+            if let syncUtcTime = connParaMap["syncUtcTime"] as? Bool {
+                connPara.syncUtcTime = syncUtcTime
+            }
+            if let readCommPara = connParaMap["readCommPara"] as? Bool {
+                connPara.readCommPara = readCommPara
+            }
+            if let readSlotPara = connParaMap["readSlotPara"] as? Bool {
+                connPara.readSlotPara = readSlotPara
+            }
+            if let readTriggerPara = connParaMap["readTriggerPara"] as? Bool {
+                connPara.readTriggerPara = readTriggerPara
+            }
+            if let readSensorPara = connParaMap["readSensorPara"] as? Bool {
+                connPara.readSensorPara = readSensorPara
+            }
+
+            beacon.connectEnhanced(
+                beaconPassword,
+                timeout: timeoutSeconds,
+                connPara: connPara,
+                delegate: self
+            )
+            return
+        }
+
+        beacon.connect(beaconPassword, timeout: timeoutSeconds, delegate: self)
     }
 
     public func definition() -> ModuleDefinition {
@@ -150,6 +249,21 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
         OnCreate {
             self.beaconManager = KBeaconsMgr.sharedBeaconManager()
             self.beaconManager?.delegate = self
+        }
+
+        OnDestroy {
+            self.beaconManager?.stopScanning()
+            self.beaconManager?.delegate = nil
+
+            self.connectedBeacons.values.forEach {
+                $0.notifyDataDelegate = nil
+                $0.disconnect()
+            }
+
+            self.connectedBeacons.removeAll()
+            self.pendingConnectionPromises.values.forEach { $0.resolve(false) }
+            self.pendingConnectionPromises.removeAll()
+            self.beaconManager = nil
         }
 
         Function("startScanning") {
@@ -167,30 +281,42 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             self.beaconManager?.clearBeacons()
         }
 
-        AsyncFunction("connectEnhanced") { (mac: String, timeout: Int, promise: Promise) in
-            guard let beacon = self.findBeacon(mac: mac) else {
-                promise.reject("BEACON_NOT_FOUND", "Beacon with MAC \(mac) not found")
-                return
-            }
-            
-            let connPara = KBConnPara(timeout: Float(timeout))
-            beacon.connect(para: connPara, delegate: self)
-            // The result is handled by the onConnStateChange delegate
-            promise.resolve(nil)
+        AsyncFunction("connect") { (macAddress: String, password: String?, timeout: Int?, promise: Promise) in
+            self.connectInternal(
+                macAddress: macAddress,
+                password: password,
+                timeout: timeout,
+                connParaMap: nil,
+                promise: promise
+            )
         }
 
-        AsyncFunction("disconnect") { (mac: String, promise: Promise) in
-            guard let beacon = self.findBeacon(mac: mac) else {
-                promise.reject("BEACON_NOT_FOUND", "Beacon with MAC \(mac) not found")
+        AsyncFunction("connectEnhanced") { (macAddress: String, password: String?, timeout: Int?, connParaMap: [String: Any]?, promise: Promise) in
+            self.connectInternal(
+                macAddress: macAddress,
+                password: password,
+                timeout: timeout,
+                connParaMap: connParaMap,
+                promise: promise
+            )
+        }
+
+        AsyncFunction("disconnect") { (macAddress: String, promise: Promise) in
+            guard let beacon = self.findBeacon(mac: macAddress) else {
+                promise.resolve(false)
                 return
             }
+
+            let normalized = normalizedMac(macAddress)
+            pendingConnectionPromises.removeValue(forKey: normalized)
+            connectedBeacons.removeValue(forKey: normalized)
             beacon.disconnect()
-            promise.resolve(nil)
+            promise.resolve(true)
         }
         
-        AsyncFunction("modifyConfig") { (mac: String, configs: [[String: Any]], promise: Promise) in
-            guard let beacon = self.connectedBeacons[mac] else {
-                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(mac) is not connected")
+        AsyncFunction("modifyConfig") { (macAddress: String, configs: [[String: Any]], promise: Promise) in
+            guard let beacon = self.connectedBeacons[normalizedMac(macAddress)] else {
+                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(macAddress) is not connected")
                 return
             }
             
@@ -210,18 +336,18 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             }
         }
         
-        AsyncFunction("readSensorDataInfo") { (mac: String, promise: Promise) in
-            guard let beacon = self.connectedBeacons[mac] else {
-                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(mac) is not connected")
+        AsyncFunction("readSensorDataInfo") { (macAddress: String, _: Int, promise: Promise) in
+            guard let beacon = self.connectedBeacons[normalizedMac(macAddress)] else {
+                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(macAddress) is not connected")
                 return
             }
             
             beacon.readSensorDataInfo { (result, info, err) in
                 if result, let info = info {
                     promise.resolve([
-                        "readNextPos": info.readNextPos,
-                        "saveNum": info.saveNum,
-                        "unreadNum": info.unreadNum
+                        "totalRecordNum": info.saveNum,
+                        "unreadRecordNum": info.unreadNum,
+                        "readIndex": info.readNextPos
                     ])
                 } else {
                     promise.reject("READ_FAILED", "Failed to read sensor data info. Error: \(err.rawValue)")
@@ -229,9 +355,9 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             }
         }
         
-        AsyncFunction("readSensorHistory") { (mac: String, maxRecord: Int, promise: Promise) in
-            guard let beacon = self.connectedBeacons[mac] else {
-                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(mac) is not connected")
+        AsyncFunction("readSensorHistory") { (macAddress: String, _: Int, maxRecord: Int, _: Int?, promise: Promise) in
+            guard let beacon = self.connectedBeacons[normalizedMac(macAddress)] else {
+                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(macAddress) is not connected")
                 return
             }
             
@@ -249,9 +375,9 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             }
         }
         
-        AsyncFunction("clearSensorHistory") { (mac: String, promise: Promise) in
-            guard let beacon = self.connectedBeacons[mac] else {
-                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(mac) is not connected")
+        AsyncFunction("clearSensorHistory") { (macAddress: String, _: Int, promise: Promise) in
+            guard let beacon = self.connectedBeacons[normalizedMac(macAddress)] else {
+                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(macAddress) is not connected")
                 return
             }
             
@@ -264,9 +390,9 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             }
         }
         
-        AsyncFunction("subscribeSensorDataNotify") { (mac: String, promise: Promise) in
-            guard let beacon = self.connectedBeacons[mac] else {
-                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(mac) is not connected")
+        AsyncFunction("subscribeSensorDataNotify") { (macAddress: String, _: Int, promise: Promise) in
+            guard let beacon = self.connectedBeacons[normalizedMac(macAddress)] else {
+                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(macAddress) is not connected")
                 return
             }
             
@@ -279,9 +405,9 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             }
         }
         
-        AsyncFunction("unsubscribeSensorDataNotify") { (mac: String, promise: Promise) in
-            guard let beacon = self.connectedBeacons[mac] else {
-                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(mac) is not connected")
+        AsyncFunction("unsubscribeSensorDataNotify") { (macAddress: String, _: Int, promise: Promise) in
+            guard let beacon = self.connectedBeacons[normalizedMac(macAddress)] else {
+                promise.reject("BEACON_NOT_CONNECTED", "Beacon with MAC \(macAddress) is not connected")
                 return
             }
             
@@ -294,18 +420,21 @@ public class ExpoKBeaconProModule: Module, KBeaconsMgrDelegate, KBConnStateDeleg
             }
         }
         
-        return ModuleDefinition()
     }
 
     private func findBeacon(mac: String) -> KBeacon? {
+        let normalized = mac.uppercased()
+
         // First check manager's list of scanned beacons
-        if let beacon = self.beaconManager?.beacons.first(where: { $0.mac().uppercased() == mac.uppercased() }) {
+        if let beacon = self.beaconManager?.beacons.first(where: { $0.mac().uppercased() == normalized }) {
             return beacon
         }
+
         // Then check our list of connected beacons
-        if let beacon = self.connectedBeacons[mac.uppercased()] {
+        if let beacon = self.connectedBeacons[normalized] {
             return beacon
         }
+
         return nil
     }
 }
