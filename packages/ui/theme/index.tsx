@@ -163,18 +163,19 @@ export function resolveEight2FiveThemeName(
 export function useResolvedEight2FiveThemeName(
   mode: Eight2FiveThemeMode,
 ): Eight2FiveThemeName {
-  const [systemColorScheme, setSystemColorScheme] = React.useState<
-    ColorSchemeName | null | undefined
-  >(() => Appearance.getColorScheme());
-
-  React.useEffect(() => {
-    if (mode !== 'system') return;
-    setSystemColorScheme(Appearance.getColorScheme());
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      setSystemColorScheme(colorScheme);
-    });
-    return () => subscription.remove();
-  }, [mode]);
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => {
+      if (mode !== 'system') return () => undefined;
+      const subscription = Appearance.addChangeListener(() => onStoreChange());
+      return () => subscription.remove();
+    },
+    [mode],
+  );
+  const systemColorScheme = React.useSyncExternalStore(
+    subscribe,
+    () => Appearance.getColorScheme(),
+    () => null,
+  );
 
   return resolveEight2FiveThemeName(mode, systemColorScheme);
 }
@@ -197,7 +198,20 @@ export function Eight2FiveThemeProvider({
 
 export function useEight2FiveThemeName(): Eight2FiveThemeName {
   const providedThemeName = React.useContext(Eight2FiveThemeNameContext);
-  const fallbackThemeName = useResolvedEight2FiveThemeName('system');
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => {
+      if (providedThemeName !== undefined) return () => undefined;
+      const subscription = Appearance.addChangeListener(() => onStoreChange());
+      return () => subscription.remove();
+    },
+    [providedThemeName],
+  );
+  const fallbackThemeName = React.useSyncExternalStore(
+    subscribe,
+    () =>
+      resolveEight2FiveThemeName('system', Appearance.getColorScheme()),
+    () => 'light' as const,
+  );
   return providedThemeName ?? fallbackThemeName;
 }
 
