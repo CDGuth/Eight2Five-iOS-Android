@@ -19,6 +19,7 @@ import {
 } from "../template";
 import type { FieldPoint } from "../types";
 import {
+  DEFAULT_FIELD_GRID_PERIMETER_YARD_LINE_COUNT,
   getFieldCameraBounds,
   getFieldGridBounds,
   getInitialFieldViewport,
@@ -57,6 +58,7 @@ export interface FieldCanvasProps {
   readonly anchors?: readonly FieldAnchorGeometry[];
   readonly anchorOverlayOptions?: FieldAnchorOverlayOptions;
   readonly showPerimeterStepGrid?: boolean;
+  readonly perimeterGridYardLineCount?: number;
   readonly showAuxiliaryFieldMarks?: boolean;
   readonly style?: StyleProp<ViewStyle>;
   readonly testID?: string;
@@ -79,6 +81,7 @@ export function FieldCanvas({
   anchors = EMPTY_FIELD_ANCHORS,
   anchorOverlayOptions = HIDDEN_FIELD_ANCHOR_OVERLAY,
   showPerimeterStepGrid = false,
+  perimeterGridYardLineCount = DEFAULT_FIELD_GRID_PERIMETER_YARD_LINE_COUNT,
   showAuxiliaryFieldMarks = true,
   style,
   testID = "field-canvas",
@@ -109,14 +112,17 @@ export function FieldCanvas({
   const emptyLivePosition = useSharedValue<FieldPoint | null>(null);
   const livePosition = externalLivePosition ?? emptyLivePosition;
   const initialized = React.useRef(Boolean(externalCamera || defaultViewport));
-  const paths = React.useMemo(() => createFieldPaths(template), [template]);
+  const paths = React.useMemo(
+    () => createFieldPaths(template, perimeterGridYardLineCount),
+    [perimeterGridYardLineCount, template],
+  );
   const cameraBounds = React.useMemo(
-    () => getFieldCameraBounds(template),
-    [template],
+    () => getFieldCameraBounds(template, perimeterGridYardLineCount),
+    [perimeterGridYardLineCount, template],
   );
   const gridBounds = React.useMemo(
-    () => getFieldGridBounds(template),
-    [template],
+    () => getFieldGridBounds(template, perimeterGridYardLineCount),
+    [perimeterGridYardLineCount, template],
   );
   const { gesture } = useFieldGestures({
     camera,
@@ -133,12 +139,16 @@ export function FieldCanvas({
       if (initialized.current) return;
       const size = event.nativeEvent.layout;
       if (size.width <= 0 || size.height <= 0) return;
-      const initial = getInitialFieldViewport(size, template);
+      const initial = getInitialFieldViewport(
+        size,
+        template,
+        perimeterGridYardLineCount,
+      );
       setFieldCamera(camera, initial);
       initialized.current = true;
       onViewportChange?.(initial);
     },
-    [camera, onViewportChange, template],
+    [camera, onViewportChange, perimeterGridYardLineCount, template],
   );
 
   return (

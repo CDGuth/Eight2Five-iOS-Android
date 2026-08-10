@@ -91,7 +91,7 @@ const DISTANCE_THRESHOLD_VALUES = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 
 function distanceThresholdChoices(values: readonly number[]) {
   return values.map((value) => ({
-    label: value === 1 ? "one step" : `${value} steps`,
+    label: value === 1 ? "1 step" : `${value} steps`,
     value: String(value),
   }));
 }
@@ -134,7 +134,7 @@ export function SettingsScreen() {
         </SettingsMessage>
       ) : null}
 
-      <SettingsSection title="PANS">
+      <SettingsSection title="Tag">
         <SettingsNavigationRow
           icon={Radio}
           title="Tag connection"
@@ -267,7 +267,7 @@ export function SettingsScreen() {
         <SettingsSelectRow<string>
           icon={RulerDimensionLine}
           title="Yellow distance threshold"
-          description="Show target distance as yellow through this value, then red."
+          description="Show target distance as yellow through this value, then red after that."
           value={String(settings.distanceYellowThresholdSteps)}
           choices={distanceThresholdChoices(
             Array.from(

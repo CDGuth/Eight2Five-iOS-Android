@@ -1,5 +1,6 @@
 import type { EntityIcon } from "@eight2five/drill-schema";
 import type { FieldCameraPerspective } from "../camera/field-camera-types";
+import { FIELD_LABEL_METERS_PER_FONT_UNIT } from "./field-render-tokens";
 
 /** Icons that can be rendered as a directional path or as a circle. */
 export type DrillShapeIcon = EntityIcon | "circle";
@@ -34,18 +35,18 @@ export interface DrillLabelTransformPolicy {
 }
 
 /**
- * Label text is drawn in screen pixels inside the world-space camera group.
- * The negative Y scale both cancels the camera reflection and keeps the text
- * upright while the magnitude keeps its size constant across zoom levels.
+ * Label text is converted into fixed world-space meters, so labels scale with
+ * the field instead of remaining a constant size on screen. The signs only
+ * cancel the camera reflection/rotation needed to keep text readable.
  */
 export function getDrillLabelTransformPolicy(
-  metersPerPixel: number,
   perspective: FieldCameraPerspective = "director",
 ): DrillLabelTransformPolicy {
   "worklet";
+  const scale = FIELD_LABEL_METERS_PER_FONT_UNIT;
   return perspective === "performer"
-    ? { scaleX: -metersPerPixel, scaleY: metersPerPixel }
-    : { scaleX: metersPerPixel, scaleY: -metersPerPixel };
+    ? { scaleX: -scale, scaleY: scale }
+    : { scaleX: scale, scaleY: -scale };
 }
 
 /**

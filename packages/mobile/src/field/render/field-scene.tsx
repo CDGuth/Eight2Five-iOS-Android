@@ -75,7 +75,6 @@ export function FieldScene({
         paths={paths}
         metersPerPixel={camera.metersPerPixel}
         palette={palette}
-        perspective={perspective}
         showPerimeterStepGrid={showPerimeterStepGrid}
         showAuxiliaryFieldMarks={showAuxiliaryFieldMarks}
       />

@@ -5,12 +5,8 @@ import type { SQLiteDatabase } from "expo-sqlite";
 export const MOBILE_DB_NAME = "eight2five-mobile.db";
 export const MOBILE_DATABASE_NAME = MOBILE_DB_NAME;
 
-/**
- * The app-side schema is still under active development. Until it is declared
- * stable, a version mismatch intentionally rebuilds this disposable database
- * rather than carrying migration code for development-only layouts.
- */
-export const MOBILE_SCHEMA_VERSION = 9;
+/** Current app-side schema version. */
+export const MOBILE_SCHEMA_VERSION = 10;
 
 export const DRILLS_TABLE = "drills";
 export const DRILL_SETS_TABLE = "drill_sets";
@@ -31,11 +27,9 @@ export class MobileStorageError extends Error {
 }
 
 /**
- * Prepare the app-side database for use.
- *
- * During active schema development, any older local layout is discarded and
- * recreated from the current definition. The separate PANS manager database is
- * not touched by this routine.
+ * Prepare the app-side database for use. Current-version upgrades are migrated
+ * in place so local drills and settings survive ordinary app updates. Very old
+ * pre-migration development layouts still fall back to a rebuild.
  */
 export async function prepareMobileDatabase(db: SQLiteDatabase): Promise<void> {
   await db.execAsync("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
@@ -50,12 +44,31 @@ export async function prepareMobileDatabase(db: SQLiteDatabase): Promise<void> {
     );
   }
 
-  if (currentVersion !== MOBILE_SCHEMA_VERSION) {
+  if (currentVersion === 9) {
+    await migrateMobileDatabaseV9ToV10(db);
+  } else if (currentVersion !== MOBILE_SCHEMA_VERSION) {
     await rebuildMobileDatabase(db);
   }
 
   // Foreign-key enforcement is connection-local, so enable it on every open.
   await db.execAsync("PRAGMA foreign_keys = ON;");
+}
+
+async function migrateMobileDatabaseV9ToV10(
+  db: SQLiteDatabase,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      ALTER TABLE ${APP_SETTINGS_TABLE}
+        ADD COLUMN perimeter_grid_yard_line_count INTEGER NOT NULL DEFAULT 2
+        CHECK (
+          perimeter_grid_yard_line_count >= 0 AND
+          perimeter_grid_yard_line_count <= 10 AND
+          perimeter_grid_yard_line_count = CAST(perimeter_grid_yard_line_count AS INTEGER)
+        );
+      PRAGMA user_version = 10;
+    `);
+  });
 }
 
 async function rebuildMobileDatabase(db: SQLiteDatabase): Promise<void> {
@@ -172,6 +185,12 @@ async function createCurrentSchema(db: SQLiteDatabase): Promise<void> {
         CHECK (show_comfortable_anchor_range IN (0, 1)),
       show_perimeter_step_grid INTEGER NOT NULL DEFAULT 0
         CHECK (show_perimeter_step_grid IN (0, 1)),
+      perimeter_grid_yard_line_count INTEGER NOT NULL DEFAULT 2
+        CHECK (
+          perimeter_grid_yard_line_count >= 0 AND
+          perimeter_grid_yard_line_count <= 10 AND
+          perimeter_grid_yard_line_count = CAST(perimeter_grid_yard_line_count AS INTEGER)
+        ),
       show_auxiliary_field_marks INTEGER NOT NULL DEFAULT 1
         CHECK (show_auxiliary_field_marks IN (0, 1)),
       show_performer_labels INTEGER NOT NULL DEFAULT 1

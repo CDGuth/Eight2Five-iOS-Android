@@ -72,8 +72,8 @@ export interface DrillRenderEntityBase {
   readonly nameText?: string;
   readonly position: PhysicalFieldPoint;
   readonly facingDegrees?: number;
-  /** Ordinary entities intentionally remain fully opaque. */
-  readonly opacity: 1;
+  /** Props are intentionally de-emphasized while performers stay fully opaque. */
+  readonly opacity: 0.5 | 1;
   readonly resolvedEntity: ResolvedDrillEntity;
 }
 
@@ -362,6 +362,7 @@ function createRenderEntity(
     return {
       ...base,
       type: "prop",
+      opacity: 0.5,
       ...size,
     };
   }

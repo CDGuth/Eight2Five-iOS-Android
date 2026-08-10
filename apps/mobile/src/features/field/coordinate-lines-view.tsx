@@ -91,6 +91,9 @@ function CoordinateLine({
       />
       <Text
         className="flex-1"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
         style={{
           color,
           fontFamily: eight2FiveFonts.utilitySemibold,

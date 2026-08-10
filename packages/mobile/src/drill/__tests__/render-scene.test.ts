@@ -204,7 +204,7 @@ describe("selected-set drill render scene", () => {
       icon: "square",
       labelText: "Flag",
       nameText: "Blue flag",
-      opacity: 1,
+      opacity: 0.5,
     });
     expect(scene.current).toEqual(physicalPoint({ xSteps: 8, ySteps: 8 }));
     expect(scene.previous?.geometry.kind).toBe("polyline");

@@ -200,6 +200,9 @@ export function FieldScreen({
               controller.settings.developerModeEnabled &&
               controller.settings.showPerimeterStepGrid
             }
+            perimeterGridYardLineCount={
+              controller.settings.perimeterGridYardLineCount
+            }
           />
         }
         hud={(metrics) =>

@@ -4,12 +4,15 @@ import {
 } from "@eight2five/drill-schema";
 
 import {
+  DEFAULT_FIELD_GRID_PERIMETER_YARD_LINE_COUNT,
+  FIELD_YARD_LINE_SPACING_YARDS,
+} from "../camera/field-camera-policy";
+import {
   STANDARD_HIGH_SCHOOL_FIELD_TEMPLATE,
   type StandardFootballFieldTemplate,
 } from "../template";
 import { yardsToMeters } from "../units";
 
-const GRID_PADDING_YARDS = 10;
 const PATH_NUMBER_PRECISION = 1_000_000;
 const COORDINATE_EPSILON = 1e-9;
 const FOUR_STEP_INTERVAL = 4;
@@ -83,7 +86,7 @@ export interface FieldPathCounts {
 export interface FieldPaths {
   /** One marching-grid step, clipped to the physical field. */
   readonly stepGridPath: string;
-  /** One marching-grid step across the 10-yard camera perimeter. */
+  /** One marching-grid step across the configured field perimeter. */
   readonly perimeterStepGridPath: string;
   /** Four marching-grid steps, clipped to the physical field. */
   readonly fourStepGridPath: string;
@@ -113,7 +116,10 @@ export interface FieldPaths {
   readonly boundary: string;
 }
 
-const PATH_CACHE = new WeakMap<StandardFootballFieldTemplate, FieldPaths>();
+const PATH_CACHE = new WeakMap<
+  StandardFootballFieldTemplate,
+  Map<number, FieldPaths>
+>();
 
 /**
  * Project the active drill schema's marching grid onto the exact physical
@@ -122,8 +128,14 @@ const PATH_CACHE = new WeakMap<StandardFootballFieldTemplate, FieldPaths>();
  */
 export function createFieldPaths(
   template: StandardFootballFieldTemplate = STANDARD_HIGH_SCHOOL_FIELD_TEMPLATE,
+  perimeterYardLineCount = DEFAULT_FIELD_GRID_PERIMETER_YARD_LINE_COUNT,
 ): FieldPaths {
-  const cached = PATH_CACHE.get(template);
+  const normalizedPerimeterYardLineCount = Math.max(
+    0,
+    Math.floor(perimeterYardLineCount),
+  );
+  const templateCache = PATH_CACHE.get(template);
+  const cached = templateCache?.get(normalizedPerimeterYardLineCount);
   if (cached) return cached;
 
   const fieldExtent = freezeExtent({
@@ -132,7 +144,9 @@ export function createFieldPaths(
     minYMeters: template.bounds.minYMeters,
     maxYMeters: template.bounds.maxYMeters,
   });
-  const gridPaddingMeters = yardsToMeters(GRID_PADDING_YARDS);
+  const gridPaddingMeters = yardsToMeters(
+    normalizedPerimeterYardLineCount * FIELD_YARD_LINE_SPACING_YARDS,
+  );
   const gridExtent = freezeExtent({
     minXMeters: fieldExtent.minXMeters - gridPaddingMeters,
     maxXMeters: fieldExtent.maxXMeters + gridPaddingMeters,
@@ -323,7 +337,9 @@ export function createFieldPaths(
     sidelineHashMarks: sidelineHashMarksPath,
     boundary: boundaryPath,
   });
-  PATH_CACHE.set(template, paths);
+  const cache = templateCache ?? new Map<number, FieldPaths>();
+  cache.set(normalizedPerimeterYardLineCount, paths);
+  if (!templateCache) PATH_CACHE.set(template, cache);
   return paths;
 }
 

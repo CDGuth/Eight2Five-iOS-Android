@@ -48,6 +48,9 @@ export const DRILL_MARKER_SIZE_METERS = Object.freeze({
     DRILL_MARKER_SIZE_STEPS.midpointDiameter * STANDARD_STEP_METERS,
 });
 
+/** Converts Skia text font units into fixed world-space meters. */
+export const FIELD_LABEL_METERS_PER_FONT_UNIT = STANDARD_STEP_METERS / 24;
+
 export const LIVE_POSITION_MARKER_SIZE_STEPS = 1.5;
 export const LIVE_POSITION_MARKER_DIAMETER_METERS =
   LIVE_POSITION_MARKER_SIZE_STEPS * STANDARD_STEP_METERS;

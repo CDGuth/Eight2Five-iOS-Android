@@ -227,7 +227,6 @@ function OrdinaryEntity({
       <EntityLabel
         entity={entity}
         font={labelFont}
-        metersPerPixel={metersPerPixel}
         color={palette.fieldLines}
         perspective={perspective}
       />
@@ -238,13 +237,11 @@ function OrdinaryEntity({
 function EntityLabel({
   entity,
   font,
-  metersPerPixel,
   color,
   perspective,
 }: {
   readonly entity: DrillRenderEntity;
   readonly font: SkFont | null;
-  readonly metersPerPixel: SharedValue<number>;
   readonly color: string;
   readonly perspective: FieldCameraPerspective;
 }) {
@@ -256,13 +253,10 @@ function EntityLabel({
       ].filter((line): line is { key: string; text: string } => line !== null),
     [entity.labelText, entity.nameText],
   );
-  const labelTransform = useDerivedValue(() => {
-    const labelScale = getDrillLabelTransformPolicy(
-      metersPerPixel.value,
-      perspective,
-    );
+  const labelTransform = React.useMemo(() => {
+    const labelScale = getDrillLabelTransformPolicy(perspective);
     return [{ scaleX: labelScale.scaleX }, { scaleY: labelScale.scaleY }];
-  });
+  }, [perspective]);
 
   if (!font || lines.length === 0) return null;
   const widths = lines.map((line) => font.measureText(line.text).width);

@@ -10,10 +10,12 @@ import {
 } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
-import type { FieldCameraPerspective } from "../camera/field-camera-types";
 import type { StandardFootballFieldTemplate } from "../template";
 import type { FieldPaths } from "./create-field-paths";
-import type { FieldRenderPalette } from "./field-render-tokens";
+import {
+  FIELD_LABEL_METERS_PER_FONT_UNIT,
+  type FieldRenderPalette,
+} from "./field-render-tokens";
 import { createYardNumberTextLayout } from "./yard-number-layout";
 
 const YARD_NUMBER_MEASUREMENT_FONT_SIZE = 100;
@@ -25,7 +27,6 @@ interface FieldStaticLayerProps {
   readonly paths: FieldPaths;
   readonly metersPerPixel: SharedValue<number>;
   readonly palette: FieldRenderPalette;
-  readonly perspective: FieldCameraPerspective;
   readonly showPerimeterStepGrid: boolean;
   readonly showAuxiliaryFieldMarks: boolean;
 }
@@ -35,7 +36,6 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
   paths,
   metersPerPixel,
   palette,
-  perspective,
   showPerimeterStepGrid,
   showAuxiliaryFieldMarks,
 }: FieldStaticLayerProps) {
@@ -130,18 +130,14 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
           <SidelineLabel
             text="FRONT SIDELINE"
             yMeters={template.bounds.minYMeters}
-            atTop={perspective === "performer"}
-            perspective={perspective}
-            metersPerPixel={metersPerPixel}
+            side="front"
             font={sidelineFont}
             color={palette.fieldNumbers}
           />
           <SidelineLabel
             text="BACK SIDELINE"
             yMeters={template.bounds.maxYMeters}
-            atTop={perspective === "director"}
-            perspective={perspective}
-            metersPerPixel={metersPerPixel}
+            side="back"
             font={sidelineFont}
             color={palette.fieldNumbers}
           />
@@ -152,6 +148,7 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
             const layout = createYardNumberTextLayout(
               numberFont.measureText(number.label),
               number.heightMeters,
+              number.side,
             );
             return (
               <Group
@@ -187,31 +184,22 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
 function SidelineLabel({
   text,
   yMeters,
-  atTop,
-  perspective,
-  metersPerPixel,
+  side,
   font,
   color,
 }: {
   readonly text: string;
   readonly yMeters: number;
-  readonly atTop: boolean;
-  readonly perspective: FieldCameraPerspective;
-  readonly metersPerPixel: SharedValue<number>;
+  readonly side: "front" | "back";
   readonly font: SkFont;
   readonly color: string;
 }) {
   const width = font.measureText(text).width;
-  const transform = useDerivedValue(() => {
-    const scale = metersPerPixel.value;
-    const uprightScaleX = perspective === "performer" ? -scale : scale;
-    const uprightScaleY = perspective === "performer" ? scale : -scale;
-    const orientation = atTop ? 1 : -1;
-    return [
-      { scaleX: uprightScaleX * orientation },
-      { scaleY: uprightScaleY * orientation },
-    ];
-  });
+  const orientation = side === "front" ? -1 : 1;
+  const transform = [
+    { scaleX: FIELD_LABEL_METERS_PER_FONT_UNIT * orientation },
+    { scaleY: -FIELD_LABEL_METERS_PER_FONT_UNIT * orientation },
+  ];
   // Keep the label outside the field with the bottom of the lettering facing
   // its sideline. The lower on-screen label is rotated 180 degrees, so the
   // same local baseline offset works for both sides.

@@ -28,6 +28,10 @@ import {
   eight2FiveSpacing,
   useEight2FiveTheme,
 } from "@eight2five/ui/theme";
+import {
+  MAX_PERIMETER_GRID_YARD_LINE_COUNT,
+  MIN_PERIMETER_GRID_YARD_LINE_COUNT,
+} from "@eight2five/mobile/settings";
 
 import { SpinningLoaderIcon } from "../../components/spinning-loader-icon";
 import {
@@ -50,9 +54,26 @@ import {
   SettingsNavigationRow,
   SettingsScreenContainer,
   SettingsSection,
+  SettingsSelectRow,
   SettingsSwitchRow,
   SettingsValueRow,
 } from "./settings-components";
+
+const PERIMETER_YARD_LINE_CHOICES = Array.from(
+  {
+    length:
+      MAX_PERIMETER_GRID_YARD_LINE_COUNT -
+      MIN_PERIMETER_GRID_YARD_LINE_COUNT +
+      1,
+  },
+  (_, offset) => {
+    const count = MIN_PERIMETER_GRID_YARD_LINE_COUNT + offset;
+    return {
+      label: count === 1 ? "1 yard line" : `${count} yard lines`,
+      value: String(count),
+    };
+  },
+);
 
 export function DeveloperSettingsScreen() {
   const router = useRouter();
@@ -142,6 +163,7 @@ export function DeveloperSettingsScreen() {
     showCachedAnchorGeometry?: boolean;
     showComfortableAnchorRange?: boolean;
     showPerimeterStepGrid?: boolean;
+    perimeterGridYardLineCount?: number;
     comfortableAnchorRangeMeters?: number;
   }) => {
     setOperationError(undefined);
@@ -438,6 +460,18 @@ export function DeveloperSettingsScreen() {
             void updateOverlay({ showPerimeterStepGrid })
           }
           testID="show-perimeter-step-grid-setting"
+        />
+        <SettingsSelectRow<string>
+          icon={Grid3X3}
+          title="Perimeter grid yard lines"
+          description="Choose how many five-yard lines of the 8:5 step grid extend beyond each field boundary."
+          value={String(settings.perimeterGridYardLineCount)}
+          choices={PERIMETER_YARD_LINE_CHOICES}
+          onChange={(value) =>
+            void updateOverlay({ perimeterGridYardLineCount: Number(value) })
+          }
+          disabled={!settings.showPerimeterStepGrid}
+          testID="perimeter-grid-yard-line-count-setting"
         />
         <SettingsSwitchRow
           icon={MapPinned}

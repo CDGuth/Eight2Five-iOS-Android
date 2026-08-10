@@ -3,6 +3,7 @@ import {
   getDrillLabelTransformPolicy,
   getDrillShapeTransformPolicy,
 } from "../render/drill-shape-policy";
+import { FIELD_LABEL_METERS_PER_FONT_UNIT } from "../render/field-render-tokens";
 
 describe("drill icon shape policy", () => {
   test.each([
@@ -52,14 +53,14 @@ describe("drill icon shape policy", () => {
     );
   });
 
-  test("counter-scales labels for both camera perspectives", () => {
-    expect(getDrillLabelTransformPolicy(0.25, "director")).toEqual({
-      scaleX: 0.25,
-      scaleY: -0.25,
+  test("keeps labels at a fixed field-space scale for both perspectives", () => {
+    expect(getDrillLabelTransformPolicy("director")).toEqual({
+      scaleX: FIELD_LABEL_METERS_PER_FONT_UNIT,
+      scaleY: -FIELD_LABEL_METERS_PER_FONT_UNIT,
     });
-    expect(getDrillLabelTransformPolicy(0.25, "performer")).toEqual({
-      scaleX: -0.25,
-      scaleY: 0.25,
+    expect(getDrillLabelTransformPolicy("performer")).toEqual({
+      scaleX: -FIELD_LABEL_METERS_PER_FONT_UNIT,
+      scaleY: FIELD_LABEL_METERS_PER_FONT_UNIT,
     });
   });
 
