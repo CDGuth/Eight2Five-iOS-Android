@@ -54,9 +54,7 @@ export async function prepareMobileDatabase(db: SQLiteDatabase): Promise<void> {
   await db.execAsync("PRAGMA foreign_keys = ON;");
 }
 
-async function migrateMobileDatabaseV9ToV10(
-  db: SQLiteDatabase,
-): Promise<void> {
+async function migrateMobileDatabaseV9ToV10(db: SQLiteDatabase): Promise<void> {
   await db.withTransactionAsync(async () => {
     await db.execAsync(`
       ALTER TABLE ${APP_SETTINGS_TABLE}

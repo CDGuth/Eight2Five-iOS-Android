@@ -35,7 +35,11 @@ describe("yard-number text layout", () => {
   });
 
   test("orients front and back rows toward their respective sidelines", () => {
-    const front = createYardNumberTextLayout(bounds, targetHeightMeters, "front");
+    const front = createYardNumberTextLayout(
+      bounds,
+      targetHeightMeters,
+      "front",
+    );
     const back = createYardNumberTextLayout(bounds, targetHeightMeters, "back");
 
     expect(front.scaleX).toBeLessThan(0);
