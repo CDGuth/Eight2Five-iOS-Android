@@ -43,7 +43,7 @@ export function createYardNumberTextLayout(
   }
 
   const scale = targetHeightMeters / bounds.height;
-  const orientation = side === "front" ? -1 : 1;
+  const orientation = side === "front" ? 1 : -1;
   return Object.freeze({
     x: -bounds.x - bounds.width / 2,
     y: -bounds.y - bounds.height / 2,

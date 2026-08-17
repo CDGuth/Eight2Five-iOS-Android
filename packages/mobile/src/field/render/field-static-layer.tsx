@@ -1,5 +1,6 @@
 import React from "react";
 import { Montserrat_600SemiBold } from "@expo-google-fonts/montserrat/600SemiBold";
+import { Montserrat_700Bold } from "@expo-google-fonts/montserrat/700Bold";
 import {
   Group,
   Path,
@@ -11,22 +12,31 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import type { StandardFootballFieldTemplate } from "../template";
+import type { FieldCameraPerspective } from "../camera/field-camera-types";
 import type { FieldPaths } from "./create-field-paths";
 import {
-  FIELD_LABEL_METERS_PER_FONT_UNIT,
+  FIELD_NUMBER_OPACITY,
+  getFixedWorldLabelGapUnits,
+  getResponsiveSidelineLabelScale,
   type FieldRenderPalette,
 } from "./field-render-tokens";
 import { createYardNumberTextLayout } from "./yard-number-layout";
 
 const YARD_NUMBER_MEASUREMENT_FONT_SIZE = 100;
-const SIDELINE_LABEL_FONT_SIZE_PX = 11;
-const SIDELINE_LABEL_INSET_PX = 6;
+const SIDELINE_LABEL_FONT_SIZE_PX = 88;
+const SIDELINE_LABEL_INSET_PX = 96;
 
 interface FieldStaticLayerProps {
   readonly template: StandardFootballFieldTemplate;
   readonly paths: FieldPaths;
   readonly metersPerPixel: SharedValue<number>;
+  readonly canvasSize: SharedValue<{
+    readonly width: number;
+    readonly height: number;
+  }>;
   readonly palette: FieldRenderPalette;
+  readonly perspective: FieldCameraPerspective;
+  readonly showFiveYardNumbers: boolean;
   readonly showPerimeterStepGrid: boolean;
   readonly showAuxiliaryFieldMarks: boolean;
 }
@@ -35,7 +45,10 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
   template,
   paths,
   metersPerPixel,
+  canvasSize,
   palette,
+  perspective,
+  showFiveYardNumbers,
   showPerimeterStepGrid,
   showAuxiliaryFieldMarks,
 }: FieldStaticLayerProps) {
@@ -51,10 +64,7 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
     Montserrat_600SemiBold,
     YARD_NUMBER_MEASUREMENT_FONT_SIZE,
   );
-  const sidelineFont = useFont(
-    Montserrat_600SemiBold,
-    SIDELINE_LABEL_FONT_SIZE_PX,
-  );
+  const sidelineFont = useFont(Montserrat_700Bold, SIDELINE_LABEL_FONT_SIZE_PX);
   const fieldClip = {
     x: template.bounds.minXMeters,
     y: template.bounds.minYMeters,
@@ -71,14 +81,38 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
   return (
     <>
       {showPerimeterStepGrid ? (
-        <Group clip={perimeterClip}>
+        <>
+          <Group clip={perimeterClip}>
+            <Path
+              path={paths.perimeterStepGridPath}
+              color={palette.stepGrid}
+              style="stroke"
+              strokeWidth={stepGridStroke}
+            />
+            <Path
+              path={paths.perimeterFourStepGridPath}
+              color={palette.fourStepGrid}
+              opacity={0.46}
+              style="stroke"
+              strokeWidth={fourStepStroke}
+            />
+          </Group>
           <Path
-            path={paths.perimeterStepGridPath}
-            color={palette.stepGrid}
+            path={paths.perimeterBoundaryPath}
+            color={
+              paths.perimeterBoundaryUsesFourStepStyle
+                ? palette.fourStepGrid
+                : palette.stepGrid
+            }
+            opacity={paths.perimeterBoundaryUsesFourStepStyle ? 0.46 : 1}
             style="stroke"
-            strokeWidth={stepGridStroke}
+            strokeWidth={
+              paths.perimeterBoundaryUsesFourStepStyle
+                ? fourStepStroke
+                : stepGridStroke
+            }
           />
-        </Group>
+        </>
       ) : null}
       <Rect {...fieldClip} color={palette.fieldBackground} />
       <Group clip={fieldClip}>
@@ -133,6 +167,10 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
             side="front"
             font={sidelineFont}
             color={palette.fieldNumbers}
+            perspective={perspective}
+            metersPerPixel={metersPerPixel}
+            canvasSize={canvasSize}
+            gridExtent={paths.gridExtent}
           />
           <SidelineLabel
             text="BACK SIDELINE"
@@ -140,11 +178,18 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
             side="back"
             font={sidelineFont}
             color={palette.fieldNumbers}
+            perspective={perspective}
+            metersPerPixel={metersPerPixel}
+            canvasSize={canvasSize}
+            gridExtent={paths.gridExtent}
           />
         </>
       ) : null}
       {numberFont
-        ? template.yardNumbers.map((number) => {
+        ? (showFiveYardNumbers
+            ? template.fiveYardNumbers
+            : template.yardNumbers
+          ).map((number) => {
             const layout = createYardNumberTextLayout(
               numberFont.measureText(number.label),
               number.heightMeters,
@@ -170,7 +215,7 @@ export const FieldStaticLayer = React.memo(function FieldStaticLayer({
                     text={number.label}
                     font={numberFont}
                     color={palette.fieldNumbers}
-                    opacity={0.72}
+                    opacity={FIELD_NUMBER_OPACITY}
                   />
                 </Group>
               </Group>
@@ -187,33 +232,88 @@ function SidelineLabel({
   side,
   font,
   color,
+  perspective,
+  metersPerPixel,
+  canvasSize,
+  gridExtent,
 }: {
   readonly text: string;
   readonly yMeters: number;
   readonly side: "front" | "back";
   readonly font: SkFont;
   readonly color: string;
+  readonly perspective: FieldCameraPerspective;
+  readonly metersPerPixel: SharedValue<number>;
+  readonly canvasSize: SharedValue<{
+    readonly width: number;
+    readonly height: number;
+  }>;
+  readonly gridExtent: FieldPaths["gridExtent"];
 }) {
-  const width = font.measureText(text).width;
-  const orientation = side === "front" ? -1 : 1;
-  const transform = [
-    { scaleX: FIELD_LABEL_METERS_PER_FONT_UNIT * orientation },
-    { scaleY: -FIELD_LABEL_METERS_PER_FONT_UNIT * orientation },
-  ];
-  // Keep the label outside the field with the bottom of the lettering facing
-  // its sideline. The lower on-screen label is rotated 180 degrees, so the
-  // same local baseline offset works for both sides.
-  const baselineOffset = -SIDELINE_LABEL_INSET_PX;
+  const bounds = font.measureText(text);
+  const orientation = perspective === "director" ? 1 : -1;
+  const transform = useDerivedValue(() => {
+    const viewport = canvasSize.value;
+    const defaultMetersPerPixel =
+      viewport.width > 0 && viewport.height > 0
+        ? Math.max(
+            (gridExtent.maxXMeters - gridExtent.minXMeters) / viewport.width,
+            (gridExtent.maxYMeters - gridExtent.minYMeters) / viewport.height,
+          ) * 1.06
+        : metersPerPixel.value;
+    const scale = getResponsiveSidelineLabelScale(
+      metersPerPixel.value,
+      defaultMetersPerPixel,
+      bounds.width,
+      viewport.width,
+    );
+    return [{ scaleX: scale * orientation }, { scaleY: -scale * orientation }];
+  });
+  const isLowerScreenEdge =
+    perspective === "director" ? side === "front" : side === "back";
+  const baselineOffset = isLowerScreenEdge
+    ? -bounds.y
+    : -(bounds.y + bounds.height);
+  const insetTransform = useDerivedValue(() => {
+    const viewport = canvasSize.value;
+    const defaultMetersPerPixel =
+      viewport.width > 0 && viewport.height > 0
+        ? Math.max(
+            (gridExtent.maxXMeters - gridExtent.minXMeters) / viewport.width,
+            (gridExtent.maxYMeters - gridExtent.minYMeters) / viewport.height,
+          ) * 1.06
+        : metersPerPixel.value;
+    const scale = getResponsiveSidelineLabelScale(
+      metersPerPixel.value,
+      defaultMetersPerPixel,
+      bounds.width,
+      viewport.width,
+    );
+    const defaultScale = getResponsiveSidelineLabelScale(
+      defaultMetersPerPixel,
+      defaultMetersPerPixel,
+      bounds.width,
+      viewport.width,
+    );
+    const insetUnits = getFixedWorldLabelGapUnits(
+      scale,
+      defaultScale,
+      SIDELINE_LABEL_INSET_PX,
+    );
+    return [{ translateY: isLowerScreenEdge ? insetUnits : -insetUnits }];
+  });
 
   return (
     <Group origin={{ x: 0, y: yMeters }} transform={transform} opacity={0.78}>
-      <Text
-        x={-width / 2}
-        y={yMeters + baselineOffset}
-        text={text}
-        font={font}
-        color={color}
-      />
+      <Group transform={insetTransform}>
+        <Text
+          x={-bounds.x - bounds.width / 2}
+          y={yMeters + baselineOffset}
+          text={text}
+          font={font}
+          color={color}
+        />
+      </Group>
     </Group>
   );
 }

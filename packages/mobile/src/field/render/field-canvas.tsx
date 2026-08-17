@@ -57,6 +57,8 @@ export interface FieldCanvasProps {
   readonly guidanceVisible?: boolean;
   readonly anchors?: readonly FieldAnchorGeometry[];
   readonly anchorOverlayOptions?: FieldAnchorOverlayOptions;
+  readonly showFiveYardNumbers?: boolean;
+  readonly showStickyYardNumbers?: boolean;
   readonly showPerimeterStepGrid?: boolean;
   readonly perimeterGridYardLineCount?: number;
   readonly showAuxiliaryFieldMarks?: boolean;
@@ -80,6 +82,8 @@ export function FieldCanvas({
   guidanceVisible = false,
   anchors = EMPTY_FIELD_ANCHORS,
   anchorOverlayOptions = HIDDEN_FIELD_ANCHOR_OVERLAY,
+  showFiveYardNumbers = false,
+  showStickyYardNumbers = true,
   showPerimeterStepGrid = false,
   perimeterGridYardLineCount = DEFAULT_FIELD_GRID_PERIMETER_YARD_LINE_COUNT,
   showAuxiliaryFieldMarks = true,
@@ -188,6 +192,8 @@ export function FieldCanvas({
             guidanceVisible={guidanceVisible}
             anchors={anchors}
             anchorOverlayOptions={anchorOverlayOptions}
+            showFiveYardNumbers={showFiveYardNumbers}
+            showStickyYardNumbers={showStickyYardNumbers}
             showPerimeterStepGrid={showPerimeterStepGrid}
             showAuxiliaryFieldMarks={showAuxiliaryFieldMarks}
           />

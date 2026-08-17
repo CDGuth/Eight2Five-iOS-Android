@@ -42,10 +42,10 @@ describe("yard-number text layout", () => {
     );
     const back = createYardNumberTextLayout(bounds, targetHeightMeters, "back");
 
-    expect(front.scaleX).toBeLessThan(0);
-    expect(front.scaleY).toBeGreaterThan(0);
-    expect(back.scaleX).toBeGreaterThan(0);
-    expect(back.scaleY).toBeLessThan(0);
+    expect(front.scaleX).toBeGreaterThan(0);
+    expect(front.scaleY).toBeLessThan(0);
+    expect(back.scaleX).toBeLessThan(0);
+    expect(back.scaleY).toBeGreaterThan(0);
     expect(front.scaleX).toBeCloseTo(-back.scaleX);
     expect(front.scaleY).toBeCloseTo(-back.scaleY);
   });

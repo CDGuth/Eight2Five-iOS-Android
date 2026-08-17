@@ -193,6 +193,8 @@ export function FieldScreen({
             guidanceVisible={guidanceVisible}
             anchors={anchors}
             anchorOverlayOptions={anchorOverlayOptions}
+            showFiveYardNumbers={controller.settings.showFiveYardNumbers}
+            showStickyYardNumbers={controller.settings.showStickyYardNumbers}
             showAuxiliaryFieldMarks={
               controller.settings.showAuxiliaryFieldMarks
             }
