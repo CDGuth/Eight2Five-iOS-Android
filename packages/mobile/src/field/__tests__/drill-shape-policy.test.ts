@@ -1,7 +1,9 @@
 import {
   createDrillShapeGeometry,
   getDrillLabelTransformPolicy,
+  getDrillLabelVerticalOffsetUnits,
   getDrillShapeTransformPolicy,
+  PERFORMER_LABEL_GAP_METERS,
 } from "../render/drill-shape-policy";
 import { FIELD_LABEL_METERS_PER_FONT_UNIT } from "../render/field-render-tokens";
 
@@ -62,6 +64,24 @@ describe("drill icon shape policy", () => {
       scaleX: -FIELD_LABEL_METERS_PER_FONT_UNIT,
       scaleY: FIELD_LABEL_METERS_PER_FONT_UNIT,
     });
+  });
+
+  test("keeps performer-label spacing fixed relative to the field grid", () => {
+    const markerHalfHeightMeters = 0.28575;
+    const paintedBottomUnits = -14;
+
+    for (const labelScale of [0.02, 0.06, 0.1, 0.25]) {
+      const offsetUnits = getDrillLabelVerticalOffsetUnits(
+        labelScale,
+        markerHalfHeightMeters,
+        paintedBottomUnits,
+      );
+      const labelBottomMeters = (paintedBottomUnits + offsetUnits) * labelScale;
+      const markerTopMeters = -markerHalfHeightMeters;
+      expect(markerTopMeters - labelBottomMeters).toBeCloseTo(
+        PERFORMER_LABEL_GAP_METERS,
+      );
+    }
   });
 
   test("keeps dot and circle primitives circular", () => {

@@ -207,6 +207,15 @@ describe("selected-set drill render scene", () => {
       opacity: 0.5,
     });
     expect(scene.current).toEqual(physicalPoint({ xSteps: 8, ySteps: 8 }));
+    expect(scene.currentEntity).toMatchObject({
+      type: "performer",
+      entityId: 1,
+      labelText: "A",
+      nameText: "Alice",
+      diameterMeters: DEFAULT_PERFORMER_DIAMETER_METERS,
+      opacity: 1,
+      position: physicalPoint({ xSteps: 8, ySteps: 8 }),
+    });
     expect(scene.previous?.geometry.kind).toBe("polyline");
     expect(scene.next?.geometry.kind).toBe("straight");
     expect(scene.previous?.midpoint).toEqual(
@@ -269,6 +278,8 @@ describe("selected-set drill render scene", () => {
     expect(scene.entities[1].labelText).toBeUndefined();
     expect(scene.entities[1].nameText).toBe("Blue flag");
     expect(scene.current).not.toBeNull();
+    expect(scene.currentEntity?.labelText).toBeUndefined();
+    expect(scene.currentEntity?.nameText).toBe("Alice");
     expect(scene.previous).toBeUndefined();
     expect(scene.next).toBeUndefined();
     expect(scene.previousDots).toEqual([]);
@@ -291,6 +302,7 @@ describe("selected-set drill render scene", () => {
     });
 
     expect(scene.current).toBeNull();
+    expect(scene.currentEntity).toBeNull();
     expect(scene.previous).toBeUndefined();
     expect(scene.next).toBeUndefined();
     expect(scene.previousDots).toEqual([]);
@@ -392,13 +404,13 @@ describe("selected-set drill render scene", () => {
     expect(DRILL_RENDER_LAYER_ORDER).toEqual([
       "static",
       "anchors",
+      "guidance",
       "entities",
       "extra-connectors",
       "extra-dots",
       "previous",
       "next",
       "current-target",
-      "guidance",
       "live-position",
     ]);
   });
