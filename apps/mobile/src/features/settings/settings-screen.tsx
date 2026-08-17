@@ -5,10 +5,12 @@ import {
   BookOpenText,
   Code2,
   Eye,
+  Hash,
   ListChecks,
   Map,
   Navigation,
   Palette,
+  Pin,
   Radio,
   Route,
   Rows3,
@@ -217,6 +219,28 @@ export function SettingsScreen() {
           }
           disabled={disabled}
           testID="coordinate-rounding-setting"
+        />
+        <SettingsSwitchRow
+          icon={Hash}
+          title="5-yard line numbers"
+          description="Show yard-line numbers at every 5-yard increment instead of only every 10 yards."
+          value={settings.showFiveYardNumbers}
+          onChange={(showFiveYardNumbers) =>
+            void update({ showFiveYardNumbers })
+          }
+          disabled={disabled}
+          testID="five-yard-numbers-setting"
+        />
+        <SettingsSwitchRow
+          icon={Pin}
+          title="Sticky yard-line numbers"
+          description="Keep the lower row of yard-line numbers visible near the bottom edge while panning and zooming."
+          value={settings.showStickyYardNumbers}
+          onChange={(showStickyYardNumbers) =>
+            void update({ showStickyYardNumbers })
+          }
+          disabled={disabled}
+          testID="sticky-yard-numbers-setting"
         />
         <SettingsSwitchRow
           icon={Rows3}

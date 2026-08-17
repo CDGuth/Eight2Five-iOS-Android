@@ -6,7 +6,7 @@ export const MOBILE_DB_NAME = "eight2five-mobile.db";
 export const MOBILE_DATABASE_NAME = MOBILE_DB_NAME;
 
 /** Current app-side schema version. */
-export const MOBILE_SCHEMA_VERSION = 10;
+export const MOBILE_SCHEMA_VERSION = 11;
 
 export const DRILLS_TABLE = "drills";
 export const DRILL_SETS_TABLE = "drill_sets";
@@ -44,9 +44,16 @@ export async function prepareMobileDatabase(db: SQLiteDatabase): Promise<void> {
     );
   }
 
-  if (currentVersion === 9) {
+  let migratedVersion = currentVersion;
+  if (migratedVersion === 9) {
     await migrateMobileDatabaseV9ToV10(db);
-  } else if (currentVersion !== MOBILE_SCHEMA_VERSION) {
+    migratedVersion = 10;
+  }
+  if (migratedVersion === 10) {
+    await migrateMobileDatabaseV10ToV11(db);
+    migratedVersion = 11;
+  }
+  if (migratedVersion !== MOBILE_SCHEMA_VERSION) {
     await rebuildMobileDatabase(db);
   }
 
@@ -65,6 +72,22 @@ async function migrateMobileDatabaseV9ToV10(db: SQLiteDatabase): Promise<void> {
           perimeter_grid_yard_line_count = CAST(perimeter_grid_yard_line_count AS INTEGER)
         );
       PRAGMA user_version = 10;
+    `);
+  });
+}
+
+async function migrateMobileDatabaseV10ToV11(
+  db: SQLiteDatabase,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      ALTER TABLE ${APP_SETTINGS_TABLE}
+        ADD COLUMN show_five_yard_numbers INTEGER NOT NULL DEFAULT 0
+        CHECK (show_five_yard_numbers IN (0, 1));
+      ALTER TABLE ${APP_SETTINGS_TABLE}
+        ADD COLUMN show_sticky_yard_numbers INTEGER NOT NULL DEFAULT 1
+        CHECK (show_sticky_yard_numbers IN (0, 1));
+      PRAGMA user_version = 11;
     `);
   });
 }
@@ -191,6 +214,10 @@ async function createCurrentSchema(db: SQLiteDatabase): Promise<void> {
         ),
       show_auxiliary_field_marks INTEGER NOT NULL DEFAULT 1
         CHECK (show_auxiliary_field_marks IN (0, 1)),
+      show_five_yard_numbers INTEGER NOT NULL DEFAULT 0
+        CHECK (show_five_yard_numbers IN (0, 1)),
+      show_sticky_yard_numbers INTEGER NOT NULL DEFAULT 1
+        CHECK (show_sticky_yard_numbers IN (0, 1)),
       show_performer_labels INTEGER NOT NULL DEFAULT 1
         CHECK (show_performer_labels IN (0, 1)),
       show_performer_names INTEGER NOT NULL DEFAULT 0

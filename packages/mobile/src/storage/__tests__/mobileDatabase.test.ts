@@ -15,7 +15,7 @@ describe("mobile app SQLite schema preparation", () => {
 
     const sql = executed.join("\n");
     expect(MOBILE_DB_NAME).toBe("eight2five-mobile.db");
-    expect(MOBILE_SCHEMA_VERSION).toBe(10);
+    expect(MOBILE_SCHEMA_VERSION).toBe(11);
     expect(sql).toContain("PRAGMA journal_mode = WAL");
     expect(sql).toContain("PRAGMA foreign_keys = OFF");
     expect(sql).toContain("DROP TABLE IF EXISTS app_settings");
@@ -42,6 +42,10 @@ describe("mobile app SQLite schema preparation", () => {
     );
     expect(sql).toContain("default_field_preset TEXT NOT NULL");
     expect(sql).toContain("show_perimeter_step_grid INTEGER NOT NULL");
+    expect(sql).toContain("show_five_yard_numbers INTEGER NOT NULL DEFAULT 0");
+    expect(sql).toContain(
+      "show_sticky_yard_numbers INTEGER NOT NULL DEFAULT 1",
+    );
     expect(sql).toContain(
       "perimeter_grid_yard_line_count INTEGER NOT NULL DEFAULT 2",
     );
@@ -85,7 +89,7 @@ describe("mobile app SQLite schema preparation", () => {
     expect(database.withTransactionAsync).toHaveBeenCalledTimes(1);
   });
 
-  test("migrates version 9 in place without deleting user data", async () => {
+  test("migrates version 9 through the current schema without deleting user data", async () => {
     const executed: string[] = [];
     const database = fakeDatabase(9, executed);
 
@@ -94,7 +98,24 @@ describe("mobile app SQLite schema preparation", () => {
     const sql = executed.join("\n");
     expect(sql).toContain("ALTER TABLE app_settings");
     expect(sql).toContain("ADD COLUMN perimeter_grid_yard_line_count");
+    expect(sql).toContain("ADD COLUMN show_five_yard_numbers");
+    expect(sql).toContain("ADD COLUMN show_sticky_yard_numbers");
     expect(sql).toContain("PRAGMA user_version = 10");
+    expect(sql).toContain("PRAGMA user_version = 11");
+    expect(sql).not.toContain("DROP TABLE");
+    expect(database.withTransactionAsync).toHaveBeenCalledTimes(2);
+  });
+
+  test("migrates version 10 field-display settings in place", async () => {
+    const executed: string[] = [];
+    const database = fakeDatabase(10, executed);
+
+    await prepareMobileDatabase(database);
+
+    const sql = executed.join("\n");
+    expect(sql).toContain("ADD COLUMN show_five_yard_numbers");
+    expect(sql).toContain("ADD COLUMN show_sticky_yard_numbers");
+    expect(sql).toContain("PRAGMA user_version = 11");
     expect(sql).not.toContain("DROP TABLE");
     expect(database.withTransactionAsync).toHaveBeenCalledTimes(1);
   });

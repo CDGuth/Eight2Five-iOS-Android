@@ -38,6 +38,8 @@ export interface AppSettings {
   readonly showPerimeterStepGrid: boolean;
   readonly perimeterGridYardLineCount: number;
   readonly showAuxiliaryFieldMarks: boolean;
+  readonly showFiveYardNumbers: boolean;
+  readonly showStickyYardNumbers: boolean;
   readonly showPerformerLabels: boolean;
   readonly showPerformerNames: boolean;
   readonly showPropLabels: boolean;
@@ -75,6 +77,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = Object.freeze({
   showPerimeterStepGrid: false,
   perimeterGridYardLineCount: DEFAULT_PERIMETER_GRID_YARD_LINE_COUNT,
   showAuxiliaryFieldMarks: true,
+  showFiveYardNumbers: false,
+  showStickyYardNumbers: true,
   showPerformerLabels: true,
   showPerformerNames: false,
   showPropLabels: true,
@@ -111,6 +115,8 @@ export const APP_PREFERENCE_KEYS = Object.freeze([
   "showPerimeterStepGrid",
   "perimeterGridYardLineCount",
   "showAuxiliaryFieldMarks",
+  "showFiveYardNumbers",
+  "showStickyYardNumbers",
   "showPerformerLabels",
   "showPerformerNames",
   "showPropLabels",
@@ -213,6 +219,14 @@ export function normalizeAppSettings(value?: unknown): AppSettings {
     showAuxiliaryFieldMarks: booleanOrDefault(
       candidate.showAuxiliaryFieldMarks,
       DEFAULT_APP_SETTINGS.showAuxiliaryFieldMarks,
+    ),
+    showFiveYardNumbers: booleanOrDefault(
+      candidate.showFiveYardNumbers,
+      DEFAULT_APP_SETTINGS.showFiveYardNumbers,
+    ),
+    showStickyYardNumbers: booleanOrDefault(
+      candidate.showStickyYardNumbers,
+      DEFAULT_APP_SETTINGS.showStickyYardNumbers,
     ),
     showPerformerLabels: booleanOrDefault(
       candidate.showPerformerLabels,
