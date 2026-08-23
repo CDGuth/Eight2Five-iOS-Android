@@ -56,6 +56,7 @@ export const STICKY_YARD_NUMBER_MIN_HEIGHT_PX = 14;
 export const STICKY_YARD_NUMBER_MAX_HEIGHT_PX = 48;
 export const STICKY_YARD_NUMBER_BOTTOM_INSET_PX = 12;
 export const FIELD_NUMBER_OPACITY = 0.72;
+export const FIELD_CONNECTOR_STROKE_PX = 1.25;
 
 /**
  * Sideline labels are deliberately larger than ordinary entity labels. Their
@@ -145,9 +146,10 @@ export function getClampedFieldTextScale(
   return Math.min(maximumScale, Math.max(minimumScale, baseScale));
 }
 
-export const LIVE_POSITION_MARKER_SIZE_STEPS = 1.5;
+export const LIVE_POSITION_MARKER_SIZE_STEPS =
+  DRILL_MARKER_SIZE_STEPS.transitionDiameter;
 export const LIVE_POSITION_MARKER_DIAMETER_METERS =
-  LIVE_POSITION_MARKER_SIZE_STEPS * STANDARD_STEP_METERS;
+  DRILL_MARKER_SIZE_METERS.transitionDiameter;
 
 export const DEFAULT_FIELD_RENDER_PALETTE: FieldRenderPalette = Object.freeze({
   canvasBackground: "#E7EAF0",

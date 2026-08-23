@@ -394,8 +394,12 @@ describe("selected-set drill render scene", () => {
     expect(DRILL_MARKER_SIZE_METERS.currentDiameter).toBeCloseTo(1.143);
     expect(DRILL_MARKER_SIZE_METERS.transitionDiameter).toBeCloseTo(0.5715);
     expect(DRILL_MARKER_SIZE_METERS.midpointDiameter).toBeCloseTo(0.28575);
-    expect(LIVE_POSITION_MARKER_SIZE_STEPS).toBe(1.5);
-    expect(LIVE_POSITION_MARKER_DIAMETER_METERS).toBeCloseTo(0.85725);
+    expect(LIVE_POSITION_MARKER_SIZE_STEPS).toBe(
+      DRILL_MARKER_SIZE_STEPS.transitionDiameter,
+    );
+    expect(LIVE_POSITION_MARKER_DIAMETER_METERS).toBeCloseTo(
+      DRILL_MARKER_SIZE_METERS.transitionDiameter,
+    );
     expect(DRILL_MARKER_COLORS).toEqual({
       yellow: COLOR_PRESETS.yellow,
       red: COLOR_PRESETS.red,

@@ -35,6 +35,7 @@ import type { FieldRenderPalette } from "./field-render-tokens";
 import {
   DRILL_MARKER_COLORS,
   DRILL_MARKER_SIZE_METERS,
+  FIELD_CONNECTOR_STROKE_PX,
   FIELD_NUMBER_OPACITY,
   getClampedFieldTextScale,
 } from "./field-render-tokens";
@@ -54,7 +55,6 @@ const PERFORMER_LABEL_MIN_SCREEN_FONT_SIZE_PX = 15;
 const PERFORMER_LABEL_MAX_SCREEN_FONT_SIZE_PX = 30;
 const ACTIVE_PERFORMER_LABEL_SCALE_MULTIPLIER = 1.25;
 const MARKER_STROKE_METERS = STANDARD_STEP_METERS * 0.12;
-const CONNECTOR_STROKE_PX = 1.25;
 const DASH_LENGTH_METERS = STANDARD_STEP_METERS * 0.25;
 const DASH_GAP_METERS = STANDARD_STEP_METERS * 0.15;
 const EXTRA_TRANSITION_OPACITY = 0.68;
@@ -396,7 +396,7 @@ function ExtraTransitionConnector({
     [transition.geometry],
   );
   const connectorStrokeWidth = useDerivedValue(
-    () => metersPerPixel.value * CONNECTOR_STROKE_PX,
+    () => metersPerPixel.value * FIELD_CONNECTOR_STROKE_PX,
   );
   return (
     <Path
@@ -433,7 +433,7 @@ function ImmediateTransitionLayer({
   const midpointRadius = DRILL_MARKER_SIZE_METERS.midpointDiameter / 2;
   const centerRadius = DRILL_MARKER_SIZE_METERS.transitionDiameter * 0.18;
   const connectorStrokeWidth = useDerivedValue(
-    () => metersPerPixel.value * CONNECTOR_STROKE_PX,
+    () => metersPerPixel.value * FIELD_CONNECTOR_STROKE_PX,
   );
   const dashIntervals = [DASH_LENGTH_METERS, DASH_GAP_METERS];
   const connectorColor =
