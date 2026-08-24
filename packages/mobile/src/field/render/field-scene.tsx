@@ -93,17 +93,19 @@ export function FieldScene({
           metersPerPixel={camera.metersPerPixel}
           palette={palette}
         />
-        {guidanceVisible && targetPosition ? (
-          <FieldGuidanceLayer
-            livePosition={livePosition}
-            targetPosition={targetPosition}
-            metersPerPixel={camera.metersPerPixel}
-            color={palette.guidance}
-          />
-        ) : null}
         <FieldDrillLayer
           scene={drillScene}
           fallbackTargetPosition={targetPosition}
+          guidanceOverlay={
+            guidanceVisible && targetPosition ? (
+              <FieldGuidanceLayer
+                livePosition={livePosition}
+                targetPosition={targetPosition}
+                metersPerPixel={camera.metersPerPixel}
+                color={palette.guidance}
+              />
+            ) : null
+          }
           metersPerPixel={camera.metersPerPixel}
           palette={palette}
           perspective={perspective}

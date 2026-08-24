@@ -63,19 +63,21 @@ export interface FieldDrillLayerProps {
   readonly scene?: DrillRenderScene;
   /** Used only for legacy/manual drills that have no complete source document. */
   readonly fallbackTargetPosition?: FieldPoint;
+  readonly guidanceOverlay?: React.ReactNode;
   readonly metersPerPixel: SharedValue<number>;
   readonly palette: FieldRenderPalette;
   readonly perspective: FieldCameraPerspective;
 }
 
 /**
- * Draws the selected-set model in explicit z-order. Static field, anchors, and
- * guidance are owned by the parent scene; the guidance connector is drawn
- * before this layer so every current/previous/next set marker covers it.
+ * Draws the selected-set model in explicit z-order. The optional guidance
+ * overlay is placed above ordinary performer/prop shapes but below their labels
+ * and every current/previous/next set marker.
  */
 export const FieldDrillLayer = React.memo(function FieldDrillLayer({
   scene,
   fallbackTargetPosition,
+  guidanceOverlay,
   metersPerPixel,
   palette,
   perspective,
@@ -96,8 +98,17 @@ export const FieldDrillLayer = React.memo(function FieldDrillLayer({
   return (
     <>
       {entities.map((entity) => (
-        <OrdinaryEntity
-          key={`entity-${entity.entityId}`}
+        <OrdinaryEntityShape
+          key={`entity-shape-${entity.entityId}`}
+          entity={entity}
+          metersPerPixel={metersPerPixel}
+          palette={palette}
+        />
+      ))}
+      {guidanceOverlay}
+      {entities.map((entity) => (
+        <OrdinaryEntityLabel
+          key={`entity-label-${entity.entityId}`}
           entity={entity}
           labelFont={
             entity.type === "performer" ? performerLabelFont : propLabelFont
@@ -169,18 +180,14 @@ export const FieldDrillLayer = React.memo(function FieldDrillLayer({
   );
 });
 
-function OrdinaryEntity({
+function OrdinaryEntityShape({
   entity,
-  labelFont,
   metersPerPixel,
   palette,
-  perspective,
 }: {
   readonly entity: DrillRenderEntity;
-  readonly labelFont: SkFont | null;
   readonly metersPerPixel: SharedValue<number>;
   readonly palette: FieldRenderPalette;
-  readonly perspective: FieldCameraPerspective;
 }) {
   const icon = entity.icon as string;
   const width =
@@ -219,51 +226,66 @@ function OrdinaryEntity({
   const outlineWidth = useDerivedValue(() => metersPerPixel.value);
 
   return (
-    <>
-      <Group
-        transform={transform}
-        origin={transformPolicy.origin}
-        opacity={entity.opacity}
-      >
-        {shapePath ? (
-          <>
-            <Path path={shapePath} color={entity.color} style="fill" />
-            {entity.type === "prop" ? (
-              <Path
-                path={shapePath}
-                color={palette.fieldLines}
-                style="stroke"
-                strokeWidth={outlineWidth}
-                opacity={0.8}
-              />
-            ) : null}
-          </>
-        ) : (
-          <Circle
-            cx={0}
-            cy={0}
-            r={shapeGeometry.kind === "circle" ? shapeGeometry.radius : 0}
-            color={entity.color}
-          />
-        )}
-      </Group>
-      <EntityLabel
-        entity={entity}
-        font={labelFont}
-        color={palette.fieldLines}
-        perspective={perspective}
-        metersPerPixel={metersPerPixel}
-        markerHalfHeightMeters={height / 2}
-        minimumScreenFontSizePx={
-          entity.type === "performer"
-            ? PERFORMER_LABEL_MIN_SCREEN_FONT_SIZE_PX
-            : undefined
-        }
-        opacityMultiplier={
-          entity.type === "performer" ? FIELD_NUMBER_OPACITY : 1
-        }
-      />
-    </>
+    <Group
+      transform={transform}
+      origin={transformPolicy.origin}
+      opacity={entity.opacity}
+    >
+      {shapePath ? (
+        <>
+          <Path path={shapePath} color={entity.color} style="fill" />
+          {entity.type === "prop" ? (
+            <Path
+              path={shapePath}
+              color={palette.fieldLines}
+              style="stroke"
+              strokeWidth={outlineWidth}
+              opacity={0.8}
+            />
+          ) : null}
+        </>
+      ) : (
+        <Circle
+          cx={0}
+          cy={0}
+          r={shapeGeometry.kind === "circle" ? shapeGeometry.radius : 0}
+          color={entity.color}
+        />
+      )}
+    </Group>
+  );
+}
+
+function OrdinaryEntityLabel({
+  entity,
+  labelFont,
+  metersPerPixel,
+  palette,
+  perspective,
+}: {
+  readonly entity: DrillRenderEntity;
+  readonly labelFont: SkFont | null;
+  readonly metersPerPixel: SharedValue<number>;
+  readonly palette: FieldRenderPalette;
+  readonly perspective: FieldCameraPerspective;
+}) {
+  const height =
+    entity.type === "prop" ? entity.lengthMeters : entity.diameterMeters;
+  return (
+    <EntityLabel
+      entity={entity}
+      font={labelFont}
+      color={palette.fieldLines}
+      perspective={perspective}
+      metersPerPixel={metersPerPixel}
+      markerHalfHeightMeters={height / 2}
+      minimumScreenFontSizePx={
+        entity.type === "performer"
+          ? PERFORMER_LABEL_MIN_SCREEN_FONT_SIZE_PX
+          : undefined
+      }
+      opacityMultiplier={entity.type === "performer" ? FIELD_NUMBER_OPACITY : 1}
+    />
   );
 }
 

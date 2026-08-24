@@ -40,7 +40,7 @@ jest.mock("@eight2five/ui/components/text", () => {
 jest.mock("@eight2five/ui/components/icon", () => ({ Icon: () => null }));
 
 describe("CoordinateLinesView", () => {
-  test("keeps both coordinate rows single-line and allows them to shrink to fit", async () => {
+  test("allows each coordinate row to wrap to two lines without auto-scaling", async () => {
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       renderer = TestRenderer.create(
@@ -55,17 +55,41 @@ describe("CoordinateLinesView", () => {
       );
     });
 
-    const fittingText = renderer.root.findAll(
-      (node) => node.props.adjustsFontSizeToFit === true,
+    const coordinateText = renderer.root.findAll(
+      (node) => node.props.numberOfLines === 2,
     );
-    expect(fittingText.length).toBeGreaterThanOrEqual(2);
-    for (const node of fittingText) {
-      expect(node.props.numberOfLines).toBe(1);
-      expect(node.props.minimumFontScale).toBe(0.6);
+    expect(coordinateText.length).toBeGreaterThanOrEqual(2);
+    for (const node of coordinateText) {
+      expect(node.props.adjustsFontSizeToFit).toBeUndefined();
+      expect(node.props.minimumFontScale).toBeUndefined();
       expect(node.props.style).toEqual(
         expect.objectContaining({ flexShrink: 1 }),
       );
     }
+
+    await act(async () => renderer.unmount());
+  });
+
+  test("supports a three-line limit for compact live coordinates", async () => {
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <CoordinateLinesView
+          coordinate={{
+            side: "Side 1: 12.75 steps outside the 5-yard line",
+            frontBack: "24.5 steps behind the back hash",
+          }}
+          color="#000"
+          mutedColor="#666"
+          maxLinesPerAxis={3}
+        />,
+      );
+    });
+
+    const coordinateText = renderer.root.findAll(
+      (node) => node.props.numberOfLines === 3,
+    );
+    expect(coordinateText.length).toBeGreaterThanOrEqual(2);
 
     await act(async () => renderer.unmount());
   });
